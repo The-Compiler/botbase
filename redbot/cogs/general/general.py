@@ -200,11 +200,7 @@ class General:
         created_at = _("Since {}. That's over {} days ago!").format(
             guild.created_at.strftime("%d %b %Y %H:%M"), passed
         )
-
-        colour = "".join([choice("0123456789ABCDEF") for x in range(6)])
-        colour = randint(0, 0xFFFFFF)
-
-        data = discord.Embed(description=created_at, colour=discord.Colour(value=colour))
+        data = discord.Embed(description=created_at, colour=(await ctx.embed_colour()))
         data.add_field(name=_("Region"), value=str(guild.region))
         data.add_field(name=_("Users"), value="{}/{}".format(online, total_users))
         data.add_field(name=_("Text Channels"), value=text_channels)
@@ -239,7 +235,7 @@ class General:
 
         except:
             await ctx.send(
-                _(("No Urban dictionary entries were found or there was an error in the process"))
+                _("No Urban dictionary entries were found or there was an error in the process")
             )
 
         if data.get("error") != 404:
@@ -249,7 +245,7 @@ class General:
                 embeds = []
                 for ud in data["list"]:
                     embed = discord.Embed()
-                    embed.title = _("{} by {}".format(ud["word"].capitalize(), ud["author"]))
+                    embed.title = _("{} by {}").format(ud["word"].capitalize(), ud["author"])
                     embed.url = ud["permalink"]
 
                     description = "{} \n \n **Example : ** {}".format(
@@ -257,13 +253,11 @@ class General:
                     )
                     if len(description) > 2048:
                         description = "{}...".format(description[:2045])
-                    embed.description = _(description)
+                    embed.description = description
 
                     embed.set_footer(
-                        text=_(
-                            "{} Down / {} Up , Powered by urban dictionary".format(
-                                ud["thumbs_down"], ud["thumbs_up"]
-                            )
+                        text=_("{} Down / {} Up , Powered by urban dictionary").format(
+                            ud["thumbs_down"], ud["thumbs_up"]
                         )
                     )
                     embeds.append(embed)
@@ -280,14 +274,17 @@ class General:
             else:
                 messages = []
                 for ud in data["list"]:
-                    description = "{} \n \n **Example : ** {}".format(
+                    description = _("{} \n \n **Example : ** {}").format(
                         ud["definition"], ud.get("example", "N/A")
                     )
                     if len(description) > 2048:
                         description = "{}...".format(description[:2045])
-                    description = _(description)
+                    description = description
 
-                    message = "<{}> \n {} by {} \n \n {} \n \n {} Down / {} Up , Powered by urban dictionary".format(
+                    message = _(
+                        "<{}> \n {} by {} \n \n {} \n \n {} Down / {} Up, Powered by urban "
+                        "dictionary"
+                    ).format(
                         ud["permalink"],
                         ud["word"].capitalize(),
                         ud["author"],
@@ -308,6 +305,6 @@ class General:
                     )
         else:
             await ctx.send(
-                _(("No Urban dictionary entries were found or there was an error in the process"))
+                _("No Urban dictionary entries were found or there was an error in the process")
             )
             return

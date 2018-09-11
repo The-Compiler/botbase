@@ -12,6 +12,8 @@ from .checks import mod_or_voice_permissions, admin_or_voice_permissions, bot_ha
 from redbot.core.utils.mod import is_mod_or_superior, is_allowed_by_hierarchy, get_audit_reason
 from .log import log
 
+from redbot.core.utils.common_filters import filter_invites, filter_various_mentions
+
 _ = Translator("Mod", __file__)
 
 
@@ -1321,9 +1323,13 @@ class Mod:
         if roles is not None:
             data.add_field(name=_("Roles"), value=roles, inline=False)
         if names:
-            data.add_field(name=_("Previous Names"), value=", ".join(names), inline=False)
+            # May need sanitizing later, but mentions do not ping in embeds currently
+            val = filter_invites(", ".join(names))
+            data.add_field(name=_("Previous Names"), value=val, inline=False)
         if nicks:
-            data.add_field(name=_("Previous Nicknames"), value=", ".join(nicks), inline=False)
+            # May need sanitizing later, but mentions do not ping in embeds currently
+            val = filter_invites(", ".join(nicks))
+            data.add_field(name=_("Previous Nicknames"), value=val, inline=False)
         if voice_state and voice_state.channel:
             data.add_field(
                 name=_("Current voice channel"),
@@ -1334,6 +1340,7 @@ class Mod:
 
         name = str(user)
         name = " ~ ".join((name, user.nick)) if user.nick else name
+        name = filter_invites(name)
 
         if user.avatar:
             avatar = user.avatar_url
@@ -1364,6 +1371,7 @@ class Mod:
             msg += "\n"
             msg += ", ".join(nicks)
         if msg:
+            msg = filter_various_mentions(msg)
             await ctx.send(msg)
         else:
             await ctx.send(_("That user doesn't have any recorded name or nickname change."))
