@@ -24,9 +24,10 @@ from redbot.core.cli import confirm
 
 if sys.platform == "linux":
     import distro
-
 PYTHON_OK = sys.version_info >= (3, 6, 2)
-INTERACTIVE_MODE = not len(sys.argv) > 1  # CLI flags = non-interactive
+INTERACTIVE_MODE = (
+    not len(sys.argv) > 1
+)  # CLI flags = non-interactive
 
 INTRO = "==========================\nDiscord Bot - Launcher\n==========================\n"
 
@@ -38,13 +39,15 @@ def is_venv():
     """Return True if the process is in a venv or in a virtualenv."""
     # credit to @calebj
     return hasattr(sys, "real_prefix") or (
-        hasattr(sys, "base_prefix") and sys.base_prefix != sys.prefix
+        hasattr(sys, "base_prefix")
+        and sys.base_prefix != sys.prefix
     )
 
 
 def parse_cli_args():
     parser = argparse.ArgumentParser(
-        description="Discord Bot launcher", allow_abbrev=False
+        description="Discord Bot launcher",
+        allow_abbrev=False,
     )
     instances = load_existing_config()
     parser.add_argument(
@@ -55,20 +58,41 @@ def parse_cli_args():
         help="The instance to run",
         choices=list(instances.keys()),
     )
-    parser.add_argument("--start", "-s", help="Starts Red", action="store_true")
     parser.add_argument(
-        "--auto-restart", help="Autorestarts the Bot in case of issues", action="store_true"
-    )
-    parser.add_argument("--update", help="Updates the Bot", action="store_true")
-    parser.add_argument(
-        "--update-dev", help="Updates the Bot from the Github repo", action="store_true"
+        "--start",
+        "-s",
+        help="Starts Red",
+        action="store_true",
     )
     parser.add_argument(
-        "--voice", help="Installs extra 'voice' when updating", action="store_true"
+        "--auto-restart",
+        help="Autorestarts the Bot in case of issues",
+        action="store_true",
     )
-    parser.add_argument("--test", help="Installs extra 'test' when updating", action="store_true")
     parser.add_argument(
-        "--mongo", help="Installs extra 'mongo' when updating", action="store_true"
+        "--update",
+        help="Updates the Bot",
+        action="store_true",
+    )
+    parser.add_argument(
+        "--update-dev",
+        help="Updates the Bot from the Github repo",
+        action="store_true",
+    )
+    parser.add_argument(
+        "--voice",
+        help="Installs extra 'voice' when updating",
+        action="store_true",
+    )
+    parser.add_argument(
+        "--test",
+        help="Installs extra 'test' when updating",
+        action="store_true",
+    )
+    parser.add_argument(
+        "--mongo",
+        help="Installs extra 'mongo' when updating",
+        action="store_true",
     )
     parser.add_argument(
         "--debuginfo",
@@ -78,7 +102,9 @@ def parse_cli_args():
     return parser.parse_known_args()
 
 
-def update_red(dev=False, voice=False, mongo=False, test=False):
+def update_red(
+    dev=False, voice=False, mongo=False, test=False
+):
     interpreter = sys.executable
     print("Updating the Bot...")
     # If the user ran redbot-launcher.exe, updating with pip will fail
@@ -90,7 +116,9 @@ def update_red(dev=False, voice=False, mongo=False, test=False):
     renamed = False
     if "redbot-launcher" in launcher_script and IS_WINDOWS:
         renamed = True
-        print("Renaming {} to {}".format(old_name, new_name))
+        print(
+            "Renaming {} to {}".format(old_name, new_name)
+        )
         if os.path.exists(new_name):
             os.remove(new_name)
         os.rename(old_name, new_name)
@@ -102,9 +130,13 @@ def update_red(dev=False, voice=False, mongo=False, test=False):
     if test:
         egg_l.append("test")
     if dev:
-        package = "https://github.com/BotEX-Developers/botbase"
+        package = (
+            "https://github.com/BotEX-Developers/botbase"
+        )
         if egg_l:
-            package += "#egg=BotEXBotBase[{}]".format(", ".join(egg_l))
+            package += "#egg=BotEXBotBase[{}]".format(
+                ", ".join(egg_l)
+            )
     else:
         package = "BotEXBotBase"
         if egg_l:
@@ -128,34 +160,50 @@ def update_red(dev=False, voice=False, mongo=False, test=False):
         print("Red has been updated")
     else:
         print("Something went wrong while updating!")
-
     # If redbot wasn't updated, we renamed our .exe file and didn't replace it
     scripts = os.listdir(os.path.dirname(launcher_script))
     if renamed and "redbot-launcher.exe" not in scripts:
-        print("Renaming {} to {}".format(new_name, old_name))
+        print(
+            "Renaming {} to {}".format(new_name, old_name)
+        )
         os.rename(new_name, old_name)
 
 
-def run_red(selected_instance, autorestart: bool = False, cliflags=None):
+def run_red(
+    selected_instance,
+    autorestart: bool = False,
+    cliflags=None,
+):
     interpreter = sys.executable
     while True:
         print("Starting {}...".format(selected_instance))
-        cmd_list = [interpreter, "-m", "redbot", selected_instance]
+        cmd_list = [
+            interpreter,
+            "-m",
+            "redbot",
+            selected_instance,
+        ]
         if cliflags:
             cmd_list += cliflags
         status = subprocess.call(cmd_list)
-        if (not autorestart) or (autorestart and status != 26):
+        if (not autorestart) or (
+            autorestart and status != 26
+        ):
             break
 
 
 def cli_flag_getter():
-    print("Would you like to enter any cli flags to pass to the bot? (y/n)")
+    print(
+        "Would you like to enter any cli flags to pass to the bot? (y/n)"
+    )
     resp = user_choice()
     if resp == "n":
         return None
     elif resp == "y":
         flags = []
-        print("Ok, we will now walk through choosing cli flags")
+        print(
+            "Ok, we will now walk through choosing cli flags"
+        )
         print("Would you like to specify an owner? (y/n)")
         print(
             "Please note that the owner is normally determined automatically from "
@@ -167,7 +215,9 @@ def cli_flag_getter():
             print("Enter the user id for the owner")
             owner_id = user_choice()
             flags.append("--owner {}".format(owner_id))
-        print("Would you like to specify any prefixes? (y/n)")
+        print(
+            "Would you like to specify any prefixes? (y/n)"
+        )
         choice = user_choice()
         if choice == "y":
             print(
@@ -177,7 +227,9 @@ def cli_flag_getter():
             prefixes = user_choice().split()
             for p in prefixes:
                 flags.append("-p {}".format(p))
-        print("Would you like mentioning the bot to be a prefix? (y/n)")
+        print(
+            "Would you like mentioning the bot to be a prefix? (y/n)"
+        )
         choice = user_choice()
         if choice == "y":
             flags.append("--mentionable")
@@ -188,7 +240,9 @@ def cli_flag_getter():
         choice = user_choice()
         if choice == "y":
             flags.append("--no-prompt")
-        print("Would you like to start with no cogs loaded? (y/n)")
+        print(
+            "Would you like to start with no cogs loaded? (y/n)"
+        )
         choice = user_choice()
         if choice == "y":
             flags.append("--no-cogs")
@@ -196,7 +250,9 @@ def cli_flag_getter():
         choice = user_choice()
         if choice == "y":
             flags.append("--dry-run")
-        print("Do you want to set the log level to debug? (y/n)")
+        print(
+            "Do you want to set the log level to debug? (y/n)"
+        )
         choice = user_choice()
         if choice == "y":
             flags.append("--debug")
@@ -210,9 +266,13 @@ def cli_flag_getter():
         choice = user_choice()
         if choice == "y":
             flags.append("--rpc")
-        print("You have selected the following cli flags:\n\n")
+        print(
+            "You have selected the following cli flags:\n\n"
+        )
         print("\n".join(flags))
-        print("\nIf this looks good to you, type y. If you wish to start over, type n")
+        print(
+            "\nIf this looks good to you, type y. If you wish to start over, type n"
+        )
         choice = user_choice()
         if choice == "y":
             print("Done selecting cli flags")
@@ -238,13 +298,14 @@ def instance_menu():
         print("{}. {}\n".format(counter + 1, name))
         name_num_map[str(counter + 1)] = name
         counter += 1
-
     while True:
         selection = user_choice()
         try:
             selection = int(selection)
         except ValueError:
-            print("Invalid input! Please enter a number corresponding to an instance.")
+            print(
+                "Invalid input! Please enter a number corresponding to an instance."
+            )
         else:
             if selection not in list(range(1, counter + 1)):
                 print("Invalid selection! Please try again")
@@ -258,23 +319,30 @@ async def reset_red():
     if not instances:
         print("No instance to delete.\n")
         return
-    print("WARNING: You are about to remove ALL bot instances on this computer.")
+    print(
+        "WARNING: You are about to remove ALL bot instances on this computer."
+    )
     print(
         "If you want to reset data of only one instance, "
         "please select option 5 in the launcher."
     )
     await asyncio.sleep(2)
-    print("\nIf you continue you will remove these instanes.\n")
+    print(
+        "\nIf you continue you will remove these instanes.\n"
+    )
     for instance in list(instances.keys()):
         print("    - {}".format(instance))
     await asyncio.sleep(3)
-    print('\nIf you want to reset all instances, type "I agree".')
+    print(
+        '\nIf you want to reset all instances, type "I agree".'
+    )
     response = input("> ").strip()
     if response != "I agree":
         print("Cancelling...")
         return
-
-    if confirm("\nDo you want to create a backup for an instance? (y/n) "):
+    if confirm(
+        "\nDo you want to create a backup for an instance? (y/n) "
+    ):
         for index, instance in instances.items():
             print("\nRemoving {}...".format(index))
             await create_backup(index, instance)
@@ -302,7 +370,9 @@ def user_choice():
 
 
 def extras_selector():
-    print("Enter any extra requirements you want installed\n")
+    print(
+        "Enter any extra requirements you want installed\n"
+    )
     print("Options are: voice, test, mongo\n")
     selected = user_choice()
     selected = selected.split()
@@ -312,7 +382,9 @@ def extras_selector():
 def development_choice(can_go_back=True):
     while True:
         print("\n")
-        print("Do you want to install stable or development version?")
+        print(
+            "Do you want to install stable or development version?"
+        )
         print("1. Stable version")
         print("2. Development version")
         if can_go_back:
@@ -325,18 +397,26 @@ def development_choice(can_go_back=True):
             selected = extras_selector()
             update_red(
                 dev=False,
-                voice=True if "voice" in selected else False,
+                voice=True
+                if "voice" in selected
+                else False,
                 test=True if "test" in selected else False,
-                mongo=True if "mongo" in selected else False,
+                mongo=True
+                if "mongo" in selected
+                else False,
             )
             break
         elif choice == "2":
             selected = extras_selector()
             update_red(
                 dev=True,
-                voice=True if "voice" in selected else False,
+                voice=True
+                if "voice" in selected
+                else False,
                 test=True if "test" in selected else False,
-                mongo=True if "mongo" in selected else False,
+                mongo=True
+                if "mongo" in selected
+                else False,
             )
             break
         elif choice == "0" and can_go_back:
@@ -347,18 +427,27 @@ def development_choice(can_go_back=True):
 
 def debug_info():
     pyver = sys.version
-    redver = pkg_resources.get_distribution("Red-DiscordBot").version
+    redver = pkg_resources.get_distribution(
+        "Red-DiscordBot"
+    ).version
     if IS_WINDOWS:
         os_info = platform.uname()
         osver = "{} {} (version {}) {}".format(
-            os_info.system, os_info.release, os_info.version, os_info.machine
+            os_info.system,
+            os_info.release,
+            os_info.version,
+            os_info.machine,
         )
     elif IS_MAC:
         os_info = platform.mac_ver()
-        osver = "Mac OSX {} {}".format(os_info[0], os_info[2])
+        osver = "Mac OSX {} {}".format(
+            os_info[0], os_info[2]
+        )
     else:
         os_info = distro.linux_distribution()
-        osver = "{} {}".format(os_info[0], os_info[1]).strip()
+        osver = "{} {}".format(
+            os_info[0], os_info[1]
+        ).strip()
     user_who_ran = getpass.getuser()
     info = (
         "Debug Info for the Bot\n\n"
@@ -375,10 +464,16 @@ def debug_info():
 async def is_outdated():
     red_pypi = "https://pypi.python.org/pypi/BotEXBotBase"
     async with aiohttp.ClientSession() as session:
-        async with session.get("{}/json".format(red_pypi)) as r:
+        async with session.get(
+            "{}/json".format(red_pypi)
+        ) as r:
             data = await r.json()
             new_version = data["info"]["version"]
-    return StrictVersion(new_version) > StrictVersion(__version__), new_version
+    return (
+        StrictVersion(new_version)
+        > StrictVersion(__version__),
+        new_version,
+    )
 
 
 def main_menu():
@@ -386,19 +481,31 @@ def main_menu():
         os.system("TITLE Discord Bot Launcher")
     clear_screen()
     loop = asyncio.get_event_loop()
-    outdated, new_version = loop.run_until_complete(is_outdated())
+    outdated, new_version = loop.run_until_complete(
+        is_outdated()
+    )
     while True:
         print(INTRO)
-        print("\033[4mCurrent version:\033[0m {}".format(__version__))
+        print(
+            "\033[4mCurrent version:\033[0m {}".format(
+                __version__
+            )
+        )
         if outdated:
-            print("The bot is outdated. {} is available.".format(new_version))
+            print(
+                "The bot is outdated. {} is available.".format(
+                    new_version
+                )
+            )
         print("")
         print("1. Run w/ autorestart in case of issues")
         print("2. Run")
         print("3. Update")
         print("4. Create Instance")
         print("5. Remove Instance")
-        print("6. Debug information (use this if having issues with the launcher or bot)")
+        print(
+            "6. Debug information (use this if having issues with the launcher or bot)"
+        )
         print("7. Reinstall")
         print("0. Exit")
         choice = user_choice()
@@ -406,13 +513,21 @@ def main_menu():
             instance = instance_menu()
             cli_flags = cli_flag_getter()
             if instance:
-                run_red(instance, autorestart=True, cliflags=cli_flags)
+                run_red(
+                    instance,
+                    autorestart=True,
+                    cliflags=cli_flags,
+                )
             wait()
         elif choice == "2":
             instance = instance_menu()
             cli_flags = cli_flag_getter()
             if instance:
-                run_red(instance, autorestart=False, cliflags=cli_flags)
+                run_red(
+                    instance,
+                    autorestart=False,
+                    cliflags=cli_flags,
+                )
             wait()
         elif choice == "3":
             if development_choice():
@@ -421,7 +536,9 @@ def main_menu():
             basic_setup()
             wait()
         elif choice == "5":
-            loop.run_until_complete(remove_instance_interaction())
+            loop.run_until_complete(
+                remove_instance_interaction()
+            )
             wait()
         elif choice == "6":
             debug_info()
@@ -433,7 +550,9 @@ def main_menu():
                     "1. Reinstall requirements (discard code changes, keep data and 3rd party cogs)"
                 )
                 print("2. Reset all data")
-                print("3. Factory reset (discard code changes, reset all data)")
+                print(
+                    "3. Factory reset (discard code changes, reset all data)"
+                )
                 print("\n")
                 print("0. Back")
                 choice = user_choice()
@@ -459,24 +578,39 @@ def main():
         raise RuntimeError(
             "The bot requires Python 3.7 or greater. Please install the correct version!"
         )
-    if args.debuginfo:  # Check first since the function triggers an exit
+    if (
+        args.debuginfo
+    ):  # Check first since the function triggers an exit
         debug_info()
-
-    if args.update and args.update_dev:  # Conflicting args, so error out
+    if (
+        args.update and args.update_dev
+    ):  # Conflicting args, so error out
         raise RuntimeError(
             "\nUpdate requested but conflicting arguments provided.\n\n"
             "Please try again using only one of --update or --update-dev"
         )
     if args.update:
-        update_red(voice=args.voice, test=args.test, mongo=args.mongo)
+        update_red(
+            voice=args.voice,
+            test=args.test,
+            mongo=args.mongo,
+        )
     elif args.update_dev:
-        update_red(dev=True, voice=args.voice, test=args.test, mongo=args.mongo)
-
+        update_red(
+            dev=True,
+            voice=args.voice,
+            test=args.test,
+            mongo=args.mongo,
+        )
     if INTERACTIVE_MODE:
         main_menu()
     elif args.start:
         print("Starting...")
-        run_red(args.instancename, autorestart=args.auto_restart, cliflags=flags_to_pass)
+        run_red(
+            args.instancename,
+            autorestart=args.auto_restart,
+            cliflags=flags_to_pass,
+        )
 
 
 args, flags_to_pass = parse_cli_args()
