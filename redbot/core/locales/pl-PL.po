@@ -22,7 +22,7 @@ msgstr "Ścieżka instalacji: {}\n\n"
 
 #: ../cog_manager.py:329
 msgid "That path does not exist or does not point to a valid directory."
-msgstr ""
+msgstr "Ta ścieżka nie istnieje lub nie jest poprawna"
 
 #: ../cog_manager.py:338
 msgid "Path successfully added."
@@ -66,11 +66,11 @@ msgstr ""
 
 #: ../core_commands.py:197
 msgid "Embeds are now {} for this guild."
-msgstr ""
+msgstr "Embedy są teraz {} dla tej gildii"
 
 #: ../core_commands.py:222
 msgid "Embeds are now {} for you."
-msgstr ""
+msgstr "Embedy są teraz {} dla ciebie"
 
 #: ../core_commands.py:483
 msgid "Shutting down... "
@@ -106,15 +106,15 @@ msgstr "Gra ustawiona."
 
 #: ../core_commands.py:613
 msgid "Listening set."
-msgstr ""
+msgstr "Słuchanie ustawione"
 
 #: ../core_commands.py:628
 msgid "Watching set."
-msgstr ""
+msgstr "Oglądanie ustawiane"
 
 #: ../core_commands.py:657
 msgid "Status changed to {}."
-msgstr ""
+msgstr "Status zmieniony na {}"
 
 #: ../core_commands.py:689
 msgid "Failed to change name. Remember that you can only do it up to 2 times an hour. Use nicknames if you need frequent changes. `{}set nickname`"
@@ -161,7 +161,7 @@ msgstr "Nieprawidłowy kod."
 #: ../core_commands.py:787
 msgid "Please use that command in DM. Since users probably saw your token, it is recommended to reset it right now. Go to the following link and select `Reveal Token` and `Generate a new token?`.\n\n"
 "https://discordapp.com/developers/applications/me/{}"
-msgstr ""
+msgstr "Używaj tego tylko w DM. Inni pewnie widzieli twój kod, więc go zresetuj szybko. Wejdź w ten link i wybierz `Reveal Token` i `Generate a new token`.\n\n"
 
 #: ../core_commands.py:810
 msgid "Locale has been set."
@@ -169,11 +169,11 @@ msgstr "Język został ustawiony."
 
 #: ../core_commands.py:824
 msgid "Done. Sentry logging is now enabled."
-msgstr ""
+msgstr "Logowanie sentry włączone"
 
 #: ../core_commands.py:827
 msgid "Done. Sentry logging is now disabled."
-msgstr ""
+msgstr "Logowanie sentry wyłączone"
 
 #: ../core_commands.py:880
 msgid "A backup has been made of this instance. It is at {}."
@@ -181,11 +181,11 @@ msgstr ""
 
 #: ../core_commands.py:884
 msgid "That directory doesn't seem to exist..."
-msgstr ""
+msgstr "Folder nie istnieje"
 
 #: ../core_commands.py:894
 msgid "User ID: {}"
-msgstr ""
+msgstr "ID użytkownika: {}"
 
 #: ../core_commands.py:897
 msgid "through DM"
@@ -225,19 +225,19 @@ msgstr "Nieprawidłowe ID lub użytkownik nie został znaleziony. Możesz wysył
 
 #: ../core_commands.py:970
 msgid "Owner of {}"
-msgstr ""
+msgstr "Właściciel {}"
 
 #: ../core_commands.py:971
 msgid "You can reply to this message with {}contact"
-msgstr ""
+msgstr "Możesz odpisać na tą wiadomość poprzez {}contact"
 
 #: ../core_commands.py:984 ../core_commands.py:993
 msgid "Sorry, I couldn't deliver your message to {}"
-msgstr ""
+msgstr "Nie udało mi się dostarczyć wiadomości do {}"
 
 #: ../core_commands.py:987 ../core_commands.py:996
 msgid "Message delivered to {}"
-msgstr ""
+msgstr "Wiadomość dostarczona do {}"
 
 #: ../core_commands.py:1016
 msgid "User added to whitelist."

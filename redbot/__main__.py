@@ -111,7 +111,7 @@ def list_instances():
 
 
 def main():
-    description = "Red - Version {}".format(__version__)
+    description = "Bot Base - Version {}".format(__version__)
     cli_flags = parse_cli_flags(sys.argv[1:])
     if cli_flags.list_instances:
         list_instances()

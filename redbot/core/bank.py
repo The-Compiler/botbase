@@ -28,12 +28,12 @@ __all__ = [
 
 _DEFAULT_GLOBAL = {
     "is_global": False,
-    "bank_name": "Twentysix bank",
+    "bank_name": "Derg bank",
     "currency": "credits",
     "default_balance": 100,
 }
 
-_DEFAULT_GUILD = {"bank_name": "Twentysix bank", "currency": "credits", "default_balance": 100}
+_DEFAULT_GUILD = {"bank_name": "Derg bank", "currency": "credits", "default_balance": 100}
 
 _DEFAULT_MEMBER = {"name": "", "balance": 0, "created_at": 0}
 

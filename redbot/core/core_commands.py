@@ -253,58 +253,8 @@ class Core(CoreLogic):
         await ctx.send("Pong.")
 
     @commands.command()
-    async def info(self, ctx: commands.Context):
-        """Shows info about Red"""
-        author_repo = "https://github.com/Twentysix26"
-        org_repo = "https://github.com/Cog-Creators"
-        red_repo = org_repo + "/Red-DiscordBot"
-        red_pypi = "https://pypi.python.org/pypi/Red-DiscordBot"
-        support_server_url = "https://discord.gg/red"
-        dpy_repo = "https://github.com/Rapptz/discord.py"
-        python_url = "https://www.python.org/"
-        since = datetime.datetime(2016, 1, 2, 0, 0)
-        days_since = (datetime.datetime.utcnow() - since).days
-        dpy_version = "[{}]({})".format(discord.__version__, dpy_repo)
-        python_version = "[{}.{}.{}]({})".format(*sys.version_info[:3], python_url)
-        red_version = "[{}]({})".format(__version__, red_pypi)
-        app_info = await self.bot.application_info()
-        owner = app_info.owner
-
-        async with aiohttp.ClientSession() as session:
-            async with session.get("{}/json".format(red_pypi)) as r:
-                data = await r.json()
-        outdated = StrictVersion(data["info"]["version"]) > StrictVersion(__version__)
-        about = (
-            "This is an instance of [Red, an open source Discord bot]({}) "
-            "created by [Twentysix]({}) and [improved by many]({}).\n\n"
-            "Red is backed by a passionate community who contributes and "
-            "creates content for everyone to enjoy. [Join us today]({}) "
-            "and help us improve!\n\n"
-            "".format(red_repo, author_repo, org_repo, support_server_url)
-        )
-
-        embed = discord.Embed(color=(await ctx.embed_colour()))
-        embed.add_field(name="Instance owned by", value=str(owner))
-        embed.add_field(name="Python", value=python_version)
-        embed.add_field(name="discord.py", value=dpy_version)
-        embed.add_field(name="Red version", value=red_version)
-        if outdated:
-            embed.add_field(
-                name="Outdated", value="Yes, {} is available".format(data["info"]["version"])
-            )
-        embed.add_field(name="About Red", value=about, inline=False)
-
-        embed.set_footer(
-            text="Bringing joy since 02 Jan 2016 (over {} days ago!)".format(days_since)
-        )
-        try:
-            await ctx.send(embed=embed)
-        except discord.HTTPException:
-            await ctx.send("I need the `Embed links` permission to send this")
-
-    @commands.command()
     async def uptime(self, ctx: commands.Context):
-        """Shows Red's uptime"""
+        """Shows the Bot's uptime"""
         since = ctx.bot.uptime.strftime("%Y-%m-%d %H:%M:%S")
         passed = self.get_bot_uptime()
         await ctx.send("Been up for: **{}** (since {} UTC)".format(passed, since))
@@ -430,7 +380,7 @@ class Core(CoreLogic):
     @commands.command()
     @checks.is_owner()
     async def invite(self, ctx):
-        """Show's Red's invite url"""
+        """Show's the Bot's invite url"""
         await ctx.author.send(await self._invite_url())
 
     @commands.command()
@@ -592,7 +542,7 @@ class Core(CoreLogic):
     @commands.command(name="restart")
     @checks.is_owner()
     async def _restart(self, ctx, silently: bool = False):
-        """Attempts to restart Red
+        """Attempts to restart the bot
 
         Makes Red quit with exit code 26
         The restart is not guaranteed: it must be dealt
@@ -606,7 +556,7 @@ class Core(CoreLogic):
 
     @commands.group(name="set")
     async def _set(self, ctx):
-        """Changes Red's settings"""
+        """Changes the Bot's settings"""
         if ctx.invoked_subcommand is None:
             if ctx.guild:
                 admin_role_id = await ctx.bot.db.guild(ctx.guild).admin_role()
@@ -719,7 +669,7 @@ class Core(CoreLogic):
     @_set.command()
     @checks.is_owner()
     async def avatar(self, ctx, url: str):
-        """Sets Red's avatar"""
+        """Sets the Bot's avatar"""
         async with aiohttp.ClientSession() as session:
             async with session.get(url) as r:
                 data = await r.read()
@@ -743,7 +693,7 @@ class Core(CoreLogic):
     @checks.bot_in_a_guild()
     @checks.is_owner()
     async def _game(self, ctx, *, game: str = None):
-        """Sets Red's playing status"""
+        """Sets the Bot's playing status"""
 
         if game:
             game = discord.Game(name=game)
@@ -757,7 +707,7 @@ class Core(CoreLogic):
     @checks.bot_in_a_guild()
     @checks.is_owner()
     async def _listening(self, ctx, *, listening: str = None):
-        """Sets Red's listening status"""
+        """Sets the Bot's listening status"""
 
         status = ctx.bot.guilds[0].me.status if len(ctx.bot.guilds) > 0 else discord.Status.online
         if listening:
@@ -771,7 +721,7 @@ class Core(CoreLogic):
     @checks.bot_in_a_guild()
     @checks.is_owner()
     async def _watching(self, ctx, *, watching: str = None):
-        """Sets Red's watching status"""
+        """Sets the Bot's watching status"""
 
         status = ctx.bot.guilds[0].me.status if len(ctx.bot.guilds) > 0 else discord.Status.online
         if watching:
@@ -785,7 +735,7 @@ class Core(CoreLogic):
     @checks.bot_in_a_guild()
     @checks.is_owner()
     async def status(self, ctx, *, status: str):
-        """Sets Red's status
+        """Sets the Bot's status
 
         Available statuses:
             online
@@ -814,7 +764,7 @@ class Core(CoreLogic):
     @checks.bot_in_a_guild()
     @checks.is_owner()
     async def stream(self, ctx, streamer=None, *, stream_title=None):
-        """Sets Red's streaming status
+        """Sets the Bot's streaming status
         Leaving both streamer and stream_title empty will clear it."""
 
         status = ctx.bot.guilds[0].me.status if len(ctx.bot.guilds) > 0 else None
@@ -835,7 +785,7 @@ class Core(CoreLogic):
     @_set.command(name="username", aliases=["name"])
     @checks.is_owner()
     async def _username(self, ctx, *, username: str):
-        """Sets Red's username"""
+        """Sets the Bot's username"""
         try:
             await self._name(name=username)
         except discord.HTTPException:
@@ -854,7 +804,7 @@ class Core(CoreLogic):
     @checks.admin()
     @commands.guild_only()
     async def _nickname(self, ctx, *, nickname: str = None):
-        """Sets Red's nickname"""
+        """Sets the Bot's nickname"""
         try:
             await ctx.guild.me.edit(nick=nickname)
         except discord.Forbidden:
@@ -865,7 +815,7 @@ class Core(CoreLogic):
     @_set.command(aliases=["prefixes"])
     @checks.is_owner()
     async def prefix(self, ctx, *prefixes):
-        """Sets Red's global prefix(es)"""
+        """Sets the Bot's global prefix(es)"""
         if not prefixes:
             await ctx.send_help()
             return
@@ -876,7 +826,7 @@ class Core(CoreLogic):
     @checks.admin()
     @commands.guild_only()
     async def serverprefix(self, ctx, *prefixes):
-        """Sets Red's server prefix(es)"""
+        """Sets the Bot's server prefix(es)"""
         if not prefixes:
             await ctx.bot.db.guild(ctx.guild).prefix.set([])
             await ctx.send(_("Guild prefixes have been reset."))
@@ -888,7 +838,7 @@ class Core(CoreLogic):
     @_set.command()
     @commands.cooldown(1, 60 * 10, commands.BucketType.default)
     async def owner(self, ctx):
-        """Sets Red's main owner"""
+        """Sets the Bot's main owner"""
 
         def check(m):
             return m.author == ctx.author and m.channel == ctx.channel
@@ -975,8 +925,8 @@ class Core(CoreLogic):
     async def sentry(self, ctx: commands.Context, on_or_off: bool):
         """Enable or disable Sentry logging.
 
-        Sentry is the service Red uses to manage error reporting. This should
-        be disabled if you have made your own modifications to the redbot
+        Sentry is the service the Bot uses to manage error reporting. This should
+        be disabled if you have made your own modifications to the
         package.
         """
         await ctx.bot.db.enable_sentry.set(on_or_off)
@@ -1161,7 +1111,7 @@ class Core(CoreLogic):
     @commands.command()
     @commands.cooldown(1, 60, commands.BucketType.user)
     async def contact(self, ctx, *, message: str):
-        """Sends a message to the owner"""
+        """Sends a message to the bot owner"""
         guild = ctx.message.guild
         owner = discord.utils.get(ctx.bot.get_all_members(), id=ctx.bot.owner_id)
         author = ctx.message.author

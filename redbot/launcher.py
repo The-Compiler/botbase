@@ -28,7 +28,7 @@ if sys.platform == "linux":
 PYTHON_OK = sys.version_info >= (3, 6, 2)
 INTERACTIVE_MODE = not len(sys.argv) > 1  # CLI flags = non-interactive
 
-INTRO = "==========================\nRed Discord Bot - Launcher\n==========================\n"
+INTRO = "==========================\nDiscord Bot - Launcher\n==========================\n"
 
 IS_WINDOWS = os.name == "nt"
 IS_MAC = sys.platform == "darwin"
@@ -44,7 +44,7 @@ def is_venv():
 
 def parse_cli_args():
     parser = argparse.ArgumentParser(
-        description="Red - Discord Bot's launcher (V3)", allow_abbrev=False
+        description="Discord Bot launcher", allow_abbrev=False
     )
     instances = load_existing_config()
     parser.add_argument(
@@ -57,16 +57,15 @@ def parse_cli_args():
     )
     parser.add_argument("--start", "-s", help="Starts Red", action="store_true")
     parser.add_argument(
-        "--auto-restart", help="Autorestarts Red in case of issues", action="store_true"
+        "--auto-restart", help="Autorestarts the Bot in case of issues", action="store_true"
     )
-    parser.add_argument("--update", help="Updates Red", action="store_true")
+    parser.add_argument("--update", help="Updates the Bot", action="store_true")
     parser.add_argument(
-        "--update-dev", help="Updates Red from the Github repo", action="store_true"
+        "--update-dev", help="Updates the Bot from the Github repo", action="store_true"
     )
     parser.add_argument(
         "--voice", help="Installs extra 'voice' when updating", action="store_true"
     )
-    parser.add_argument("--docs", help="Installs extra 'docs' when updating", action="store_true")
     parser.add_argument("--test", help="Installs extra 'test' when updating", action="store_true")
     parser.add_argument(
         "--mongo", help="Installs extra 'mongo' when updating", action="store_true"
@@ -79,9 +78,9 @@ def parse_cli_args():
     return parser.parse_known_args()
 
 
-def update_red(dev=False, voice=False, mongo=False, docs=False, test=False):
+def update_red(dev=False, voice=False, mongo=False, test=False):
     interpreter = sys.executable
-    print("Updating Red...")
+    print("Updating the Bot...")
     # If the user ran redbot-launcher.exe, updating with pip will fail
     # on windows since the file is open and pip will try to overwrite it.
     # We have to rename redbot-launcher.exe in this case.
@@ -100,16 +99,14 @@ def update_red(dev=False, voice=False, mongo=False, docs=False, test=False):
         egg_l.append("voice")
     if mongo:
         egg_l.append("mongo")
-    if docs:
-        egg_l.append("docs")
     if test:
         egg_l.append("test")
     if dev:
-        package = "git+https://github.com/Cog-Creators/Red-DiscordBot@V3/develop"
+        package = "https://github.com/BotEX-Developers/botbase"
         if egg_l:
-            package += "#egg=Red-DiscordBot[{}]".format(", ".join(egg_l))
+            package += "#egg=BotEXBotBase[{}]".format(", ".join(egg_l))
     else:
-        package = "Red-DiscordBot"
+        package = "BotEXBotBase"
         if egg_l:
             package += "[{}]".format(", ".join(egg_l))
     arguments = [
@@ -152,7 +149,7 @@ def run_red(selected_instance, autorestart: bool = False, cliflags=None):
 
 
 def cli_flag_getter():
-    print("Would you like to enter any cli flags to pass to redbot? (y/n)")
+    print("Would you like to enter any cli flags to pass to the bot? (y/n)")
     resp = user_choice()
     if resp == "n":
         return None
@@ -234,7 +231,7 @@ def instance_menu():
         print("No instances found!")
         return None
     counter = 0
-    print("Red instance menu\n")
+    print("Bot instance menu\n")
 
     name_num_map = {}
     for name in list(instances.keys()):
@@ -261,7 +258,7 @@ async def reset_red():
     if not instances:
         print("No instance to delete.\n")
         return
-    print("WARNING: You are about to remove ALL Red instances on this computer.")
+    print("WARNING: You are about to remove ALL bot instances on this computer.")
     print(
         "If you want to reset data of only one instance, "
         "please select option 5 in the launcher."
@@ -306,7 +303,7 @@ def user_choice():
 
 def extras_selector():
     print("Enter any extra requirements you want installed\n")
-    print("Options are: voice, docs, test, mongo\n")
+    print("Options are: voice, test, mongo\n")
     selected = user_choice()
     selected = selected.split()
     return selected
@@ -329,7 +326,6 @@ def development_choice(can_go_back=True):
             update_red(
                 dev=False,
                 voice=True if "voice" in selected else False,
-                docs=True if "docs" in selected else False,
                 test=True if "test" in selected else False,
                 mongo=True if "mongo" in selected else False,
             )
@@ -339,7 +335,6 @@ def development_choice(can_go_back=True):
             update_red(
                 dev=True,
                 voice=True if "voice" in selected else False,
-                docs=True if "docs" in selected else False,
                 test=True if "test" in selected else False,
                 mongo=True if "mongo" in selected else False,
             )
@@ -366,7 +361,7 @@ def debug_info():
         osver = "{} {}".format(os_info[0], os_info[1]).strip()
     user_who_ran = getpass.getuser()
     info = (
-        "Debug Info for Red\n\n"
+        "Debug Info for the Bot\n\n"
         + "Python version: {}\n".format(pyver)
         + "Red version: {}\n".format(redver)
         + "OS version: {}\n".format(osver)
@@ -378,7 +373,7 @@ def debug_info():
 
 
 async def is_outdated():
-    red_pypi = "https://pypi.python.org/pypi/Red-DiscordBot"
+    red_pypi = "https://pypi.python.org/pypi/BotEXBotBase"
     async with aiohttp.ClientSession() as session:
         async with session.get("{}/json".format(red_pypi)) as r:
             data = await r.json()
@@ -388,7 +383,7 @@ async def is_outdated():
 
 def main_menu():
     if IS_WINDOWS:
-        os.system("TITLE Red - Discord Bot V3 Launcher")
+        os.system("TITLE Discord Bot Launcher")
     clear_screen()
     loop = asyncio.get_event_loop()
     outdated, new_version = loop.run_until_complete(is_outdated())
@@ -396,15 +391,15 @@ def main_menu():
         print(INTRO)
         print("\033[4mCurrent version:\033[0m {}".format(__version__))
         if outdated:
-            print("Red is outdated. {} is available.".format(new_version))
+            print("The bot is outdated. {} is available.".format(new_version))
         print("")
-        print("1. Run Red w/ autorestart in case of issues")
-        print("2. Run Red")
-        print("3. Update Red")
+        print("1. Run w/ autorestart in case of issues")
+        print("2. Run")
+        print("3. Update")
         print("4. Create Instance")
         print("5. Remove Instance")
         print("6. Debug information (use this if having issues with the launcher or bot)")
-        print("7. Reinstall Red")
+        print("7. Reinstall")
         print("0. Exit")
         choice = user_choice()
         if choice == "1":
@@ -433,9 +428,9 @@ def main_menu():
         elif choice == "7":
             while True:
                 clear_screen()
-                print("==== Reinstall Red ====")
+                print("==== Reinstall ====")
                 print(
-                    "1. Reinstall Red requirements (discard code changes, keep data and 3rd party cogs)"
+                    "1. Reinstall requirements (discard code changes, keep data and 3rd party cogs)"
                 )
                 print("2. Reset all data")
                 print("3. Factory reset (discard code changes, reset all data)")
@@ -462,7 +457,7 @@ def main_menu():
 def main():
     if not PYTHON_OK:
         raise RuntimeError(
-            "Red requires Python 3.6.2 or greater. Please install the correct version!"
+            "The bot requires Python 3.7 or greater. Please install the correct version!"
         )
     if args.debuginfo:  # Check first since the function triggers an exit
         debug_info()
@@ -473,14 +468,14 @@ def main():
             "Please try again using only one of --update or --update-dev"
         )
     if args.update:
-        update_red(voice=args.voice, docs=args.docs, test=args.test, mongo=args.mongo)
+        update_red(voice=args.voice, test=args.test, mongo=args.mongo)
     elif args.update_dev:
-        update_red(dev=True, voice=args.voice, docs=args.docs, test=args.test, mongo=args.mongo)
+        update_red(dev=True, voice=args.voice, test=args.test, mongo=args.mongo)
 
     if INTERACTIVE_MODE:
         main_menu()
     elif args.start:
-        print("Starting Red...")
+        print("Starting...")
         run_red(args.instancename, autorestart=args.auto_restart, cliflags=flags_to_pass)
 
 
