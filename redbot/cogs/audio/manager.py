@@ -30,9 +30,7 @@ async def monitor_lavalink_server(loop):
         await asyncio.sleep(0.5)
 
     if not SHUTDOWN.is_set():
-        log.info("Lavalink jar shutdown.")
         if not has_java_error(proc.pid):
-            log.info("Restarting Lavalink jar.")
             await start_lavalink_server(loop)
         else:
             log.error(
@@ -106,13 +104,10 @@ async def start_lavalink_server(loop):
         stderr=DEVNULL,
     )
 
-    log.info("Lavalink jar started. PID: {}".format(proc.pid))
-
     loop.create_task(monitor_lavalink_server(loop))
 
 
 def shutdown_lavalink_server():
-    log.info("Shutting down lavalink server.")
     SHUTDOWN.set()
     global proc
     if proc is not None:

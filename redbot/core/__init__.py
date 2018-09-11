@@ -36,5 +36,5 @@ class VersionInfo:
         return [self.major, self.minor, self.micro, self.releaselevel, self.serial]
 
 
-__version__ = "1.0.0a2"
-version_info = VersionInfo(1, 0, 0, "alpha", 2)
+__version__ = "1.0.3a3"
+version_info = VersionInfo(1, 0, 3, "alpha", 3)
