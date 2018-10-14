@@ -2037,21 +2037,6 @@ class Audio(commands.Cog):
             ctx, _("Shuffle tracks: {true_or_false}.").format(true_or_false=shuffle)
         )
 
-    @commands.command()
-    @commands.guild_only()
-    async def sing(self, ctx):
-        """Make Red sing one of her songs"""
-        ids = (
-            "zGTkAVsrfg8",
-            "cGMWL8cOeAU",
-            "vFrjMq4aL-g",
-            "WROI5WYBU_A",
-            "41tIUr_ex3g",
-            "f9O2Rjn1azc",
-        )
-        url = f"https://www.youtube.com/watch?v={random.choice(ids)}"
-        await ctx.invoke(self.play, query=url)
-
     @commands.command(aliases=["forceskip", "fs"])
     @commands.guild_only()
     async def skip(self, ctx):

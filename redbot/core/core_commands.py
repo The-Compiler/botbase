@@ -39,7 +39,7 @@ __all__ = ["Core"]
 log = logging.getLogger("red")
 
 OWNER_DISCLAIMER = (
-    "⚠ **Only** the person who is hosting Red should be "
+    "⚠ **Only** the person who is hosting the Bot should be "
     "owner. **This has SERIOUS security implications. The "
     "owner can access any data that is present on the host "
     "system.** ⚠"
@@ -236,7 +236,7 @@ class CoreLogic:
     @classmethod
     async def _version_info(cls) -> Dict[str, str]:
         """
-        Version information for Red and discord.py
+        Version information for the Bot and discord.py
 
         Returns
         -------
@@ -268,8 +268,8 @@ class Core(commands.Cog, CoreLogic):
         await ctx.send("Pong.")
 
     @commands.command()
-    async def info(self, ctx: commands.Context):
-        """Shows info about Red"""
+    async def redinfo(self, ctx: commands.Context):
+        """Shows info about the Bot our bot is based upon"""
         author_repo = "https://github.com/Twentysix26"
         org_repo = "https://github.com/Cog-Creators"
         red_repo = org_repo + "/Red-DiscordBot"
@@ -290,7 +290,7 @@ class Core(commands.Cog, CoreLogic):
                 data = await r.json()
         outdated = VersionInfo.from_str(data["info"]["version"]) > red_version_info
         about = (
-            "This is an instance of [Red, an open source Discord bot]({}) "
+            "This is a bot based on [Red, an open source Discord bot]({}) "
             "created by [Twentysix]({}) and [improved by many]({}).\n\n"
             "Red is backed by a passionate community who contributes and "
             "creates content for everyone to enjoy. [Join us today]({}) "
@@ -299,10 +299,10 @@ class Core(commands.Cog, CoreLogic):
         )
 
         embed = discord.Embed(color=(await ctx.embed_colour()))
-        embed.add_field(name="Instance owned by", value=str(owner))
+        embed.add_field(name="Owned by", value=str(owner))
         embed.add_field(name="Python", value=python_version)
         embed.add_field(name="discord.py", value=dpy_version)
-        embed.add_field(name="Red version", value=red_version)
+        embed.add_field(name="Bot version", value=red_version)
         if outdated:
             embed.add_field(
                 name="Outdated", value="Yes, {} is available".format(data["info"]["version"])
@@ -319,7 +319,7 @@ class Core(commands.Cog, CoreLogic):
 
     @commands.command()
     async def uptime(self, ctx: commands.Context):
-        """Shows Red's uptime"""
+        """Shows the Bot's uptime"""
         since = ctx.bot.uptime.strftime("%Y-%m-%d %H:%M:%S")
         passed = self.get_bot_uptime()
         await ctx.send("Been up for: **{}** (since {} UTC)".format(passed, since))
@@ -445,7 +445,7 @@ class Core(commands.Cog, CoreLogic):
     @commands.command()
     @checks.is_owner()
     async def invite(self, ctx: commands.Context):
-        """Show's Red's invite url"""
+        """Show's the Bot's invite url"""
         await ctx.author.send(await self._invite_url())
 
     @commands.command()
@@ -593,7 +593,7 @@ class Core(commands.Cog, CoreLogic):
     @commands.command(name="restart")
     @checks.is_owner()
     async def _restart(self, ctx: commands.Context, silently: bool = False):
-        """Attempts to restart Red
+        """Attempts to restart the bot
 
         Makes Red quit with exit code 26
         The restart is not guaranteed: it must be dealt
@@ -605,7 +605,7 @@ class Core(commands.Cog, CoreLogic):
 
     @commands.group(name="set")
     async def _set(self, ctx: commands.Context):
-        """Changes Red's settings"""
+        """Changes the bot's settings"""
         if ctx.invoked_subcommand is None:
             if ctx.guild:
                 guild = ctx.guild
@@ -721,7 +721,7 @@ class Core(commands.Cog, CoreLogic):
     @_set.command()
     @checks.is_owner()
     async def avatar(self, ctx: commands.Context, url: str):
-        """Sets Red's avatar"""
+        """Sets the bot's avatar"""
         async with aiohttp.ClientSession() as session:
             async with session.get(url) as r:
                 data = await r.read()
@@ -745,7 +745,7 @@ class Core(commands.Cog, CoreLogic):
     @checks.bot_in_a_guild()
     @checks.is_owner()
     async def _game(self, ctx: commands.Context, *, game: str = None):
-        """Sets Red's playing status"""
+        """Sets the bot's playing status"""
 
         if game:
             game = discord.Game(name=game)
@@ -759,7 +759,7 @@ class Core(commands.Cog, CoreLogic):
     @checks.bot_in_a_guild()
     @checks.is_owner()
     async def _listening(self, ctx: commands.Context, *, listening: str = None):
-        """Sets Red's listening status"""
+        """Sets the bot's listening status"""
 
         status = ctx.bot.guilds[0].me.status if len(ctx.bot.guilds) > 0 else discord.Status.online
         if listening:
@@ -773,7 +773,7 @@ class Core(commands.Cog, CoreLogic):
     @checks.bot_in_a_guild()
     @checks.is_owner()
     async def _watching(self, ctx: commands.Context, *, watching: str = None):
-        """Sets Red's watching status"""
+        """Sets the bot's watching status"""
 
         status = ctx.bot.guilds[0].me.status if len(ctx.bot.guilds) > 0 else discord.Status.online
         if watching:
@@ -787,7 +787,7 @@ class Core(commands.Cog, CoreLogic):
     @checks.bot_in_a_guild()
     @checks.is_owner()
     async def status(self, ctx: commands.Context, *, status: str):
-        """Sets Red's status
+        """Sets the bot's status
 
         Available statuses:
             online
@@ -816,7 +816,7 @@ class Core(commands.Cog, CoreLogic):
     @checks.bot_in_a_guild()
     @checks.is_owner()
     async def stream(self, ctx: commands.Context, streamer=None, *, stream_title=None):
-        """Sets Red's streaming status
+        """Sets the bot's streaming status
         Leaving both streamer and stream_title empty will clear it."""
 
         status = ctx.bot.guilds[0].me.status if len(ctx.bot.guilds) > 0 else None
@@ -837,7 +837,7 @@ class Core(commands.Cog, CoreLogic):
     @_set.command(name="username", aliases=["name"])
     @checks.is_owner()
     async def _username(self, ctx: commands.Context, *, username: str):
-        """Sets Red's username"""
+        """Sets the bot's username"""
         try:
             await self._name(name=username)
         except discord.HTTPException:
@@ -856,7 +856,7 @@ class Core(commands.Cog, CoreLogic):
     @checks.admin()
     @commands.guild_only()
     async def _nickname(self, ctx: commands.Context, *, nickname: str = None):
-        """Sets Red's nickname"""
+        """Sets the bot's nickname"""
         try:
             await ctx.guild.me.edit(nick=nickname)
         except discord.Forbidden:
@@ -867,7 +867,7 @@ class Core(commands.Cog, CoreLogic):
     @_set.command(aliases=["prefixes"])
     @checks.is_owner()
     async def prefix(self, ctx: commands.Context, *prefixes: str):
-        """Sets Red's global prefix(es)"""
+        """Sets the bot's global prefix(es)"""
         if not prefixes:
             await ctx.send_help()
             return
@@ -878,7 +878,7 @@ class Core(commands.Cog, CoreLogic):
     @checks.admin()
     @commands.guild_only()
     async def serverprefix(self, ctx: commands.Context, *prefixes: str):
-        """Sets Red's server prefix(es)"""
+        """Sets the bot's server prefix(es)"""
         if not prefixes:
             await ctx.bot.db.guild(ctx.guild).prefix.set([])
             await ctx.send(_("Guild prefixes have been reset."))
@@ -890,7 +890,7 @@ class Core(commands.Cog, CoreLogic):
     @_set.command()
     @commands.cooldown(1, 60 * 10, commands.BucketType.default)
     async def owner(self, ctx: commands.Context):
-        """Sets Red's main owner"""
+        """Sets the bot's main owner"""
         # According to the Python docs this is suitable for cryptographic use
         random = SystemRandom()
         length = random.randint(25, 35)
@@ -972,23 +972,6 @@ class Core(commands.Cog, CoreLogic):
 
         await ctx.send(_("Locale has been set."))
 
-    @_set.command()
-    @checks.is_owner()
-    async def sentry(self, ctx: commands.Context, on_or_off: bool):
-        """Enable or disable Sentry logging.
-
-        Sentry is the service Red uses to manage error reporting. This should
-        be disabled if you have made your own modifications to the redbot
-        package.
-        """
-        await ctx.bot.db.enable_sentry.set(on_or_off)
-        if on_or_off:
-            ctx.bot.enable_sentry()
-            await ctx.send(_("Done. Sentry logging is now enabled."))
-        else:
-            ctx.bot.disable_sentry()
-            await ctx.send(_("Done. Sentry logging is now disabled."))
-
     @commands.group()
     @checks.is_owner()
     async def helpset(self, ctx: commands.Context):
@@ -1001,7 +984,7 @@ class Core(commands.Cog, CoreLogic):
 
         This setting only applies to embedded help.
 
-        Please note that setting a relitavely small character limit may
+        Please note that setting a relatively small character limit may
         mean some pages will exceed this limit. This is because categories
         are never spread across multiple pages in the help message.
 
