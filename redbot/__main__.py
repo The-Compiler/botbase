@@ -33,9 +33,9 @@ if sys.platform == "win32":
 
 
 #
-#               Red - Discord Bot v3
+#                Bot Base v3
 #
-#         Made by Twentysix, improved by many
+#         Made by Twentysix and Reshiram, improved by many
 #
 
 

@@ -310,9 +310,6 @@ class Warnings(commands.Cog):
         """List the warnings for the specified user.
 
         Emit `<userid>` to see your own warnings.
-
-        Note that showing warnings for users other than yourself requires
-        appropriate permissions.
         """
         if userid is None:
             user = ctx.author

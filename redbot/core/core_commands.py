@@ -39,7 +39,7 @@ __all__ = ["Core"]
 log = logging.getLogger("red")
 
 OWNER_DISCLAIMER = (
-    "⚠ **Only** the person who is hosting the Bot should be "
+    "⚠ **Only** the person who is hosting the bot should be "
     "owner. **This has SERIOUS security implications. The "
     "owner can access any data that is present on the host "
     "system.** ⚠"
@@ -78,6 +78,7 @@ class CoreLogic:
         loaded_packages = []
         notfound_packages = []
         alreadyloaded_packages = []
+        failed_with_reason_packages = []
 
         bot = self.bot
 
@@ -104,6 +105,8 @@ class CoreLogic:
                 await bot.load_extension(spec)
             except errors.PackageAlreadyLoaded:
                 alreadyloaded_packages.append(name)
+            except errors.CogLoadError as e:
+                failed_with_reason_packages.append((name, str(e)))
             except Exception as e:
                 log.exception("Package loading failed", exc_info=e)
 
@@ -115,7 +118,13 @@ class CoreLogic:
                 await bot.add_loaded_package(name)
                 loaded_packages.append(name)
 
-        return loaded_packages, failed_packages, notfound_packages, alreadyloaded_packages
+        return (
+            loaded_packages,
+            failed_packages,
+            notfound_packages,
+            alreadyloaded_packages,
+            failed_with_reason_packages,
+        )
 
     @staticmethod
     def _cleanup_and_refresh_modules(module_name: str) -> None:
@@ -188,12 +197,14 @@ class CoreLogic:
 
     async def _reload(
         self, cog_names: Sequence[str]
-    ) -> Tuple[List[str], List[str], List[str], List[str]]:
+    ) -> Tuple[List[str], List[str], List[str], List[str], List[Tuple[str, str]]]:
         await self._unload(cog_names)
 
-        loaded, load_failed, not_found, already_loaded = await self._load(cog_names)
+        loaded, load_failed, not_found, already_loaded, load_failed_with_reason = await self._load(
+            cog_names
+        )
 
-        return loaded, load_failed, not_found, already_loaded
+        return loaded, load_failed, not_found, already_loaded, load_failed_with_reason
 
     async def _name(self, name: Optional[str] = None) -> str:
         """
@@ -236,7 +247,7 @@ class CoreLogic:
     @classmethod
     async def _version_info(cls) -> Dict[str, str]:
         """
-        Version information for the Bot and discord.py
+        Version information for Red and discord.py
 
         Returns
         -------
@@ -269,12 +280,11 @@ class Core(commands.Cog, CoreLogic):
 
     @commands.command()
     async def redinfo(self, ctx: commands.Context):
-        """Shows info about the Bot our bot is based upon"""
+        """Shows info about the bot our bot is based upon"""
         author_repo = "https://github.com/Twentysix26"
         org_repo = "https://github.com/Cog-Creators"
         red_repo = org_repo + "/Red-DiscordBot"
         red_pypi = "https://pypi.python.org/pypi/Red-DiscordBot"
-        support_server_url = "https://discord.gg/red"
         dpy_repo = "https://github.com/Rapptz/discord.py"
         python_url = "https://www.python.org/"
         since = datetime.datetime(2016, 1, 2, 0, 0)
@@ -293,20 +303,16 @@ class Core(commands.Cog, CoreLogic):
             "This is a bot based on [Red, an open source Discord bot]({}) "
             "created by [Twentysix]({}) and [improved by many]({}).\n\n"
             "Red is backed by a passionate community who contributes and "
-            "creates content for everyone to enjoy. [Join us today]({}) "
+            "creates content for everyone to enjoy. [Join us today]  "
             "and help us improve!\n\n"
-            "".format(red_repo, author_repo, org_repo, support_server_url)
+            "".format(red_repo, author_repo, org_repo)
         )
 
         embed = discord.Embed(color=(await ctx.embed_colour()))
-        embed.add_field(name="Owned by", value=str(owner))
+        embed.add_field(name="Instance owned by", value=str(owner))
         embed.add_field(name="Python", value=python_version)
         embed.add_field(name="discord.py", value=dpy_version)
-        embed.add_field(name="Bot version", value=red_version)
-        if outdated:
-            embed.add_field(
-                name="Outdated", value="Yes, {} is available".format(data["info"]["version"])
-            )
+        embed.add_field(name="Red version", value=red_version)
         embed.add_field(name="About Red", value=about, inline=False)
 
         embed.set_footer(
@@ -319,7 +325,7 @@ class Core(commands.Cog, CoreLogic):
 
     @commands.command()
     async def uptime(self, ctx: commands.Context):
-        """Shows the Bot's uptime"""
+        """Shows the bot's uptime"""
         since = ctx.bot.uptime.strftime("%Y-%m-%d %H:%M:%S")
         passed = self.get_bot_uptime()
         await ctx.send("Been up for: **{}** (since {} UTC)".format(passed, since))
@@ -445,7 +451,7 @@ class Core(commands.Cog, CoreLogic):
     @commands.command()
     @checks.is_owner()
     async def invite(self, ctx: commands.Context):
-        """Show's the Bot's invite url"""
+        """Show's the bot's invite url"""
         await ctx.author.send(await self._invite_url())
 
     @commands.command()
@@ -516,7 +522,7 @@ class Core(commands.Cog, CoreLogic):
     async def load(self, ctx: commands.Context, *cogs: str):
         """Loads packages"""
         async with ctx.typing():
-            loaded, failed, not_found, already_loaded = await self._load(cogs)
+            loaded, failed, not_found, already_loaded, failed_with_reason = await self._load(cogs)
 
         if loaded:
             fmt = "Loaded {packs}."
@@ -541,6 +547,16 @@ class Core(commands.Cog, CoreLogic):
             formed = self._get_package_strings(not_found, fmt, ("was", "were"))
             await ctx.send(formed)
 
+        if failed_with_reason:
+            fmt = (
+                "{other} package{plural} could not be loaded for the following reason{plural}:\n\n"
+            )
+            reasons = "\n".join([f"`{x}`: {y}" for x, y in failed_with_reason])
+            formed = self._get_package_strings(
+                [x for x, y in failed_with_reason], fmt, ("This", "These")
+            )
+            await ctx.send(formed + reasons)
+
     @commands.command()
     @checks.is_owner()
     async def unload(self, ctx: commands.Context, *cogs: str):
@@ -562,7 +578,9 @@ class Core(commands.Cog, CoreLogic):
     async def reload(self, ctx: commands.Context, *cogs: str):
         """Reloads packages"""
         async with ctx.typing():
-            loaded, failed, not_found, already_loaded = await self._reload(cogs)
+            loaded, failed, not_found, already_loaded, failed_with_reason = await self._reload(
+                cogs
+            )
 
         if loaded:
             fmt = "Package{plural} {packs} {other} reloaded."
@@ -578,6 +596,14 @@ class Core(commands.Cog, CoreLogic):
             fmt = "The package{plural} {packs} {other} not found in any cog path."
             formed = self._get_package_strings(not_found, fmt, ("was", "were"))
             await ctx.send(formed)
+
+        if failed_with_reason:
+            fmt = "{other} package{plural} could not be reloaded for the following reason{plural}:\n\n"
+            reasons = "\n".join([f"`{x}`: {y}" for x, y in failed_with_reason])
+            formed = self._get_package_strings(
+                [x for x, y in failed_with_reason], fmt, ("This", "These")
+            )
+            await ctx.send(formed + reasons)
 
     @commands.command(name="shutdown")
     @checks.is_owner()
@@ -595,7 +621,7 @@ class Core(commands.Cog, CoreLogic):
     async def _restart(self, ctx: commands.Context, silently: bool = False):
         """Attempts to restart the bot
 
-        Makes Red quit with exit code 26
+        Makes the bot quit with exit code 26
         The restart is not guaranteed: it must be dealt
         with by the process manager in use"""
         with contextlib.suppress(discord.HTTPException):
@@ -634,7 +660,7 @@ class Core(commands.Cog, CoreLogic):
             await ctx.send(box(settings))
 
     @_set.command()
-    @checks.guildowner_or_permissions(administrator=True)
+    @checks.guildowner()
     @commands.guild_only()
     async def adminrole(self, ctx: commands.Context, *, role: discord.Role):
         """Sets the admin role for this server"""
@@ -642,7 +668,7 @@ class Core(commands.Cog, CoreLogic):
         await ctx.send(_("The admin role for this guild has been set."))
 
     @_set.command()
-    @checks.guildowner_or_permissions(administrator=True)
+    @checks.guildowner()
     @commands.guild_only()
     async def modrole(self, ctx: commands.Context, *, role: discord.Role):
         """Sets the mod role for this server"""
@@ -650,7 +676,7 @@ class Core(commands.Cog, CoreLogic):
         await ctx.send(_("The mod role for this guild has been set."))
 
     @_set.command(aliases=["usebotcolor"])
-    @checks.guildowner_or_permissions(administrator=True)
+    @checks.guildowner()
     @commands.guild_only()
     async def usebotcolour(self, ctx: commands.Context):
         """
@@ -668,7 +694,7 @@ class Core(commands.Cog, CoreLogic):
         )
 
     @_set.command()
-    @checks.guildowner_or_permissions(administrator=True)
+    @checks.guildowner()
     @commands.guild_only()
     async def serverfuzzy(self, ctx: commands.Context):
         """
@@ -972,6 +998,23 @@ class Core(commands.Cog, CoreLogic):
 
         await ctx.send(_("Locale has been set."))
 
+    @_set.command()
+    @checks.is_owner()
+    async def sentry(self, ctx: commands.Context, on_or_off: bool):
+        """Enable or disable Sentry logging.
+
+        Sentry is the service the bot uses to manage error reporting. This should
+        be disabled if you have made your own modifications to the redbot
+        package.
+        """
+        await ctx.bot.db.enable_sentry.set(on_or_off)
+        if on_or_off:
+            ctx.bot.enable_sentry()
+            await ctx.send(_("Done. Sentry logging is now enabled."))
+        else:
+            ctx.bot.disable_sentry()
+            await ctx.send(_("Done. Sentry logging is now disabled."))
+
     @commands.group()
     @checks.is_owner()
     async def helpset(self, ctx: commands.Context):
@@ -984,7 +1027,7 @@ class Core(commands.Cog, CoreLogic):
 
         This setting only applies to embedded help.
 
-        Please note that setting a relatively small character limit may
+        Please note that setting a relitavely small character limit may
         mean some pages will exceed this limit. This is because categories
         are never spread across multiple pages in the help message.
 

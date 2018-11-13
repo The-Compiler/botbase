@@ -400,7 +400,7 @@ class RedBase(commands.GroupMixin, commands.bot.BotBase, RPCMixin):
             ):
                 raise RuntimeError(
                     f"The {cog.__class__.__name__} cog in the {cog.__module__} package,"
-                    " is not using the command module, and cannot be added. "
+                    " is not using Red's command module, and cannot be added. "
                     "If this is your cog, please use `from redbot.core import commands`"
                     "in place of `from discord.ext import commands`. For more details on "
                     "this requirement, see this page: "
@@ -500,7 +500,7 @@ class Red(RedBase, discord.AutoShardedClient):
         await super().logout()
 
     async def shutdown(self, *, restart: bool = False):
-        """Gracefully quit Red.
+        """Gracefully quit the Bot.
 
         The program will exit with code :code:`0` by default.
 
