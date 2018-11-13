@@ -634,7 +634,7 @@ class Core(commands.Cog, CoreLogic):
             await ctx.send(box(settings))
 
     @_set.command()
-    @checks.guildowner()
+    @checks.guildowner_or_permissions(administrator=True)
     @commands.guild_only()
     async def adminrole(self, ctx: commands.Context, *, role: discord.Role):
         """Sets the admin role for this server"""
@@ -642,7 +642,7 @@ class Core(commands.Cog, CoreLogic):
         await ctx.send(_("The admin role for this guild has been set."))
 
     @_set.command()
-    @checks.guildowner()
+    @checks.guildowner_or_permissions(administrator=True)
     @commands.guild_only()
     async def modrole(self, ctx: commands.Context, *, role: discord.Role):
         """Sets the mod role for this server"""
@@ -650,7 +650,7 @@ class Core(commands.Cog, CoreLogic):
         await ctx.send(_("The mod role for this guild has been set."))
 
     @_set.command(aliases=["usebotcolor"])
-    @checks.guildowner()
+    @checks.guildowner_or_permissions(administrator=True)
     @commands.guild_only()
     async def usebotcolour(self, ctx: commands.Context):
         """
@@ -668,7 +668,7 @@ class Core(commands.Cog, CoreLogic):
         )
 
     @_set.command()
-    @checks.guildowner()
+    @checks.guildowner_or_permissions(administrator=True)
     @commands.guild_only()
     async def serverfuzzy(self, ctx: commands.Context):
         """
