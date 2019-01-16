@@ -310,13 +310,22 @@ class Warnings(commands.Cog):
         """List the warnings for the specified user.
 
         Emit `<userid>` to see your own warnings.
+
+        Note that showing warnings for users other than yourself requires
+        appropriate permissions.
         """
         if userid is None:
             user = ctx.author
         else:
-            user = ctx.guild.get_member(userid)
-            if user is None:  # user not in guild
-                user = namedtuple("Member", "id guild")(userid, ctx.guild)
+            if not await is_admin_or_superior(self.bot, ctx.author):
+                await ctx.send(
+                    warning(_("You are not allowed to check warnings for other users!"))
+                )
+                return
+            else:
+                user = ctx.guild.get_member(userid)
+                if user is None:  # user not in guild
+                    user = namedtuple("Member", "id guild")(userid, ctx.guild)
         msg = ""
         member_settings = self.config.member(user)
         async with member_settings.warnings() as user_warnings:
