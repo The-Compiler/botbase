@@ -28,9 +28,7 @@ _ = Translator("Warnings", __file__)
 @cog_i18n(_)
 class Warnings(commands.Cog):
     """Warn misbehaving users and take automated actions."""
-
-    default_guild = {"actions": [], "reasons": {}, "allow_custom_reasons": False, 'compact_list': False, 'vips':[]}
-
+    default_guild = {"actions": [], "reasons": {}, "allow_custom_reasons": False, 'compact_list': False, 'vips':[], 'vip_warn_amount': 50, 'vip_ignore_roles':[], 'vip_ignore_users':[]}
     default_member = {"total_points": 0, "status": "", "warnings": []}
 
     def __init__(self, bot: Red):
@@ -94,6 +92,71 @@ class Warnings(commands.Cog):
         await ctx.send(msg)
 
     @warningset.command()
+    @commands.guild_only()
+    async def vipwarnpoints(self, ctx, amount : int = None):
+        """Configure the amount of warning points a user should be given for pinging a VIP"""
+        guild = ctx.guild
+        warn_amount = await self.config.guild(guild).vip_warn_amount()
+        if amount is not None:
+            await self.config.guild(guild).vip_warn_amount.set(amount)
+            warn_amount = amount
+        await ctx.send(f"Users will be given `{warn_amount} warning points` for pinging a VIP")
+
+    @warningset.command(name='vipignoreroles', aliases=['ignoreroles', 'ignorerole', 'vipignorerole'])
+    @commands.guild_only()
+    async def vipignoreroles(self, ctx, *roles : discord.Role):
+        """Make users with a role ignored and immune from warns for pinging a VIP"""
+        guild = ctx.guild
+        async with self.config.guild(guild).vip_ignore_roles() as ignored_roles:
+            if not roles:
+                msg = f"```css\n{guild.name}'s VIP Ignored Roles List:" + '\n\n'
+                if ignored_roles:
+                    for roleID in ignored_roles:
+                        role = guild.get_role(roleID)
+                        msg += f"{role} ({roleID})" + '\n'
+                else:
+                    msg += "No Roles being Ignored." + '\n'
+                msg += "```"
+            else:
+                msg = f"```diff\nMade the following changes to {guild.name}'s VIP Ignored Roles List:" + '\n\n'
+                for role in roles:
+                    if role.id in ignored_roles:
+                        ignored_roles.remove(role.id)
+                        msg += f"- Removed Role {role} ({role.id})" + '\n'
+                    else:
+                        ignored_roles.append(role.id)
+                        msg += f"+ Added Role {role} ({role.id})" + '\n'
+                msg += "```"
+        await ctx.send(msg)
+
+    @warningset.command(name='vipignoreusers', aliases=['ignoreusers', 'ignoreuser', 'vipignoreuser'])
+    @commands.guild_only()
+    async def vipignoreusers(self, ctx, *users : discord.Member):
+        """Make users ignored and immune from warns for pinging a VIP"""
+        guild = ctx.guild
+        async with self.config.guild(guild).vip_ignore_users() as ignored_users:
+            if not users:
+                msg = f"```css\n{guild.name}'s VIP Ignored Users List:" + '\n\n'
+                if ignored_users:
+                    for userID in ignored_users:
+                        user = guild.get_member(userID)
+                        msg += f"{user} ({userID})" + '\n'
+                else:
+                    msg += "No Users being Ignored." + '\n'
+                msg += "```"
+            else:
+                msg = f"```diff\nMade the following changes to {guild.name}'s VIP Ignored Users List:" + '\n\n'
+                for user in users:
+                    if user.id in ignored_users:
+                        ignored_users.remove(user.id)
+                        msg += f"- Removed User {user} ({user.id})" + '\n'
+                    else:
+                        ignored_users.append(user.id)
+                        msg += f"+ Added User {user} ({user.id})" + '\n'
+                msg += "```"
+        await ctx.send(msg)
+
+    @warningset.command()
     @commands.is_owner()
     @commands.guildowner()
     async def reset(self, ctx : commands.Context):
@@ -103,9 +166,11 @@ class Warnings(commands.Cog):
 
     @warningset.command()
     @commands.guild_only()
-    async def compact(self, ctx : commands.Context, option : bool):
+    async def compact(self, ctx : commands.Context, option : bool = None):
         """Set compact view of listed warnings True / False."""
-        await self.config.guild(ctx.guild).compact_list.set(allowed)
+        if option is None:
+            option = not await self.config.guild(ctx.guild).compact_list()
+        await self.config.guild(ctx.guild).compact_list.set(option)
         if option:
             await ctx.send('Compact listed warns enabled.')
         else:
@@ -351,7 +416,6 @@ class Warnings(commands.Cog):
                 }
 
         async with member_settings.warnings() as user_warnings:
-            #user_warnings.update(warning_to_add)
             user_warnings.append(warning_to_add)
         current_point_count += reason_type["points"]
         await member_settings.total_points.set(current_point_count)
@@ -440,7 +504,7 @@ class Warnings(commands.Cog):
     @commands.command()
     @commands.guild_only()
     @checks.admin_or_permissions(ban_members=True)
-    async def unwarn(self, ctx: commands.Context, user: Union[discord.Member, str], warn_num: str = None):
+    async def unwarn(self, ctx: commands.Context, user: Union[discord.Member, str], warn_num: int = None):
         """Remove a warning from a user. User must be in guild."""
         if user == ctx.author:
             await ctx.send(_("You cannot remove warnings from yourself."))
@@ -455,23 +519,27 @@ class Warnings(commands.Cog):
         current_point_count = await member_settings.total_points()
         await warning_points_remove_check(self.config, ctx, user, current_point_count)
         async with member_settings.warnings() as user_warnings:
-            if warn_num is not None and warn_num <= len(user_warnings) + 1: 
-                await ctx.send(_("That warning doesn't exist!"))
-                return
+            if user_warnings:
+                if warn_num is not None and warn_num > len(user_warnings): 
+                    await ctx.send(_("That warning doesn't exist!"))
+                    return
+                else:
+                    try:
+                        warning = (user_warnings.pop(warn_num) if warn_num != None else user_warnings.pop())
+                        mod = discord.utils.get(
+                                self.bot.get_all_members(), id = warning["mod"]
+                            )
+                        if mod is None:
+                            mod = self.bot.get_user_info(warning["mod"])
+                        current_point_count -= warning["points"]
+                        await member_settings.total_points.set(current_point_count)
+                    except IndexError:
+                        await ctx.send(f'Failed to unwarn {user}')
+                        return
             else:
-                try:
-                    warning = (user_warnings.pop(warn_num) if warn_num != None else user_warnings.pop())
-                    mod = discord.utils.get(
-                            self.bot.get_all_members(), id = warning["mod"]
-                        )
-                    if mod is None:
-                        mod = self.bot.get_user_info(warning["mod"])
-                    current_point_count -= warning["points"]
-                    await member_settings.total_points.set(current_point_count)
-                except IndexError:
-                    await ctx.send(f'Failed to unwarn {user}')
+                return await ctx.send(_(f"__**{user.display_name}**__ has no warnings!"))
         await ctx.send("Removed Warning #{warn_num} | {points} point warning issued by {mod} for {description}".format(
-                warn_num = user_warnings.index(warning),
+                warn_num = (warn_num if warn_num != None else len(user_warnings) + 1), #Warning is already removed at this point, so add one to make up for one number off
                 points = warning["points"],
                 mod = mod,
                 description = warning["description"]
@@ -521,38 +589,38 @@ class Warnings(commands.Cog):
         return discord.utils.find(lambda m: m.name[:len(member)].lower() == member.lower(), guild.members)
 
     async def on_message(self, message):
+        def HasIgnoredRole(member):
+            for role in member.roles:
+                if role.id in ignored_roles:
+                    return True
+            return False
         if message.guild:  #Guild only
-
             if not message.author.bot:  #Ignores messages from bots
-
                 if not message.content.startswith(('!', ';;', 't@', 't!', '!!', '-')): #Ignore messages that start with common bot prefixes
-
                     VipList = await self.config.guild(message.guild).vips()
-
+                    ignored_users = await self.config.guild(message.guild).vip_ignore_users()
+                    ignored_roles = await self.config.guild(message.guild).vip_ignore_roles()
+                    if HasIgnoredRole(message.author) or message.author.id in ignored_users: #Dismiss Ignored Users and users with Ignored Roles
+                        return
                     for user in message.mentions:
-
                         if not message.author.id in VipList:  #Other VIPs excluded from warn for pinging VIPs
-
                             if user.id in VipList: #If message mentions a VIP, warn them
                                 vip = user
-
                                 ctx = await self.bot.get_context(message)
                                 user = message.author
-
                                 member_settings = self.config.member(user)
                                 current_point_count = await member_settings.total_points()
+                                warn_amount = await self.config.guild(ctx.guild).vip_warn_amount()
                                 warning_to_add = {
-                                        "points": 50,
+                                        "points": warn_amount,
                                         "description": f"Pinging VIP {vip}",
                                         "mod": message.guild.me.id,
                                         "time": datetime.datetime.utcnow().timestamp()
                                         }
-
                                 async with member_settings.warnings() as user_warnings:
                                     user_warnings.append(warning_to_add)
                                 current_point_count += warning_to_add['points']
                                 await member_settings.total_points.set(current_point_count)
-
                                 await warning_points_add_check(self.config, ctx, user, current_point_count)
                                 try:
                                     em = discord.Embed(
@@ -569,5 +637,10 @@ class Warnings(commands.Cog):
                                 except discord.HTTPException:
                                     #await ctx.send("Failed to send user warning notification.")
                                     pass
-                                await message.channel.send(_("User __**{user}**__ has been warned for {description}.").format(user=user, description=warning_to_add['description']))
+                                except discord.Forbidden:
+                                    pass
+                                try:
+                                    await message.channel.send(_("User __**{user}**__ has been warned for {description}.").format(user=user, description=warning_to_add['description']))
+                                except discord.Forbidden:
+                                    pass
                                 

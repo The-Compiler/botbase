@@ -142,3 +142,4 @@ ENV/
 /Scripts
 /tcl
 /redbot/079Cogs
+/get-pip.py

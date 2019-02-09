@@ -431,12 +431,35 @@ class Core(commands.Cog, CoreLogic):
                 _("Embeds are now {} for you.").format("enabled" if enabled else "disabled")
             )
 
+    def is_BotStaff_NW_Management_or_higher(self, ctx):
+        StaffServer = self.bot.get_guild(420530084294688775)
+        hasManagementOrHigher = False
+        hasBotStaff = False
+        if StaffServer is not None:
+            member = StaffServer.get_member(ctx.author.id)
+            if member is not None:
+                botStaffRole = discord.utils.get(StaffServer.roles, name='Bot Engineer')
+                if botStaffRole is not None:
+                    hasBotStaff = botStaffRole in member.roles
+                managementRole = discord.utils.get(StaffServer.roles, name='Management')
+                if managementRole is not None:
+                    hasManagementOrHigher = StaffServer.roles.index(member.top_role) >= managementRole.position
+            return hasManagementOrHigher or hasBotStaff
+        else:
+            return False
+
     @commands.command()
-    @checks.is_owner()
+    #@checks.is_owner()
     async def traceback(self, ctx: commands.Context, public: bool = False):
         """Sends to the owner the last command exception that has occurred
 
         If public (yes is specified), it will be sent to the chat instead"""
+        if not self.is_BotStaff_NW_Management_or_higher(ctx):
+            try:
+                await ctx.send("You must be a part of Northwood Management or NW Bot Engineer to use this command.")
+            except discord.Forbidden:
+                pass
+            return
         if not public:
             destination = ctx.author
         else:

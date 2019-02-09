@@ -214,7 +214,7 @@ async def EmbedPaginateWarnsList(self, ctx, items : list, items_per_page : int =
             def checkReaction(reaction, user):
                 return user == ctx.message.author and str(reaction.emoji).startswith(('⏪', '⏩', '✅'))# and reaction.message == msg
             try:
-                result, user = await self.bot.wait_for('reaction_add', timeout=20, check=checkReaction)
+                result, user = await self.bot.wait_for('reaction_add', timeout=120, check=checkReaction)
             except asyncio.TimeoutError:
                 em.set_footer(text=f'Page {currentPage} out of {maxPage}. Timeout. Please reinvoke the command to change pages.', icon_url="https://www.clipartmax.com/png/middle/171-1715896_paper-book-icon-textbook-icon.png")
                 await msg.edit(embed=em)
@@ -234,8 +234,11 @@ async def EmbedPaginateWarnsList(self, ctx, items : list, items_per_page : int =
                     #print('Next Page')
                     currentPage += 1
                     em = await showPage(currentPage)
-                    await msg.edit(embed=em)
-                    await msg.clear_reactions()
+                    try:
+                        await msg.edit(embed=em)
+                        await msg.clear_reactions()
+                    except discord.Forbidden:
+                        pass
                 elif '✅' in str(result.emoji):
                     #print('Close List')
                     await msg.delete()
