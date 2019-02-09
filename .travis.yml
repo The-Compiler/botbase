@@ -1,0 +1,20 @@
+dist: xenial
+language: python
+cache: pip
+notifications:
+  email: false
+
+python:
+- 3.7.2
+env:
+  global:
+    - PIPENV_IGNORE_VIRTUALENVS=1
+  matrix:
+    - TOXENV=py
+    - TOXENV=style
+
+install:
+- pip install --upgrade pip tox
+
+script:
+- tox

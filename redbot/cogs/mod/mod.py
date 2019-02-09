@@ -14,8 +14,12 @@ from redbot.core.i18n import Translator, cog_i18n
 from redbot.core.utils.chat_formatting import box, escape, pagify, format_perms_list
 from redbot.core.utils.common_filters import filter_invites, filter_various_mentions
 from redbot.core.utils.mod import is_mod_or_superior, is_allowed_by_hierarchy, get_audit_reason
+from redbot.core.utils.common_filters import (
+    filter_invites,
+    filter_various_mentions,
+    escape_spoilers,
+)
 from .log import log
-
 
 _ = T_ = Translator("Mod", __file__)
 
@@ -1369,10 +1373,10 @@ class Mod(commands.Cog):
     @commands.bot_has_permissions(embed_links=True)
     async def userinfo(self, ctx, *, user: discord.Member = None):
         """Show information about a user.
-        
+
         This includes fields for status, discord join date, server
         join date, voice state and previous names/nicknames.
-        
+
         If the user has no roles, previous names or previous nicknames,
         these fields will be omitted.
         """
@@ -1391,11 +1395,18 @@ class Mod(commands.Cog):
 
         joined_at = user.joined_at if not is_special else special_date
         since_created = (ctx.message.created_at - user.created_at).days
-        since_joined = (ctx.message.created_at - joined_at).days
-        user_joined = joined_at.strftime("%d %b %Y %H:%M")
+        if joined_at is not None:
+            since_joined = (ctx.message.created_at - joined_at).days
+            user_joined = joined_at.strftime("%d %b %Y %H:%M")
+        else:
+            since_joined = "?"
+            user_joined = "Unknown"
         user_created = user.created_at.strftime("%d %b %Y %H:%M")
         voice_state = user.voice
-        member_number = sorted(guild.members, key=lambda m: m.joined_at).index(user) + 1
+        member_number = (
+            sorted(guild.members, key=lambda m: m.joined_at or ctx.message.created_at).index(user)
+            + 1
+        )
 
         created_on = _("{}\n({} days ago)").format(user_created, since_created)
         joined_on = _("{}\n({} days ago)").format(user_joined, since_joined)
@@ -1539,9 +1550,9 @@ class Mod(commands.Cog):
         names = await self.settings.user(user).past_names()
         nicks = await self.settings.member(user).past_nicks()
         if names:
-            names = [escape(name, mass_mentions=True) for name in names if name]
+            names = [escape_spoilers(escape(name, mass_mentions=True)) for name in names if name]
         if nicks:
-            nicks = [escape(nick, mass_mentions=True) for nick in nicks if nick]
+            nicks = [escape_spoilers(escape(nick, mass_mentions=True)) for nick in nicks if nick]
         return names, nicks
 
     async def check_tempban_expirations(self):

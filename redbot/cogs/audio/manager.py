@@ -8,6 +8,10 @@ import re
 from subprocess import Popen, DEVNULL
 from typing import Optional, Tuple
 
+from aiohttp import ClientSession
+
+import redbot.core
+
 _JavaVersion = Tuple[int, int]
 
 log = logging.getLogger("red.audio.manager")
@@ -96,15 +100,22 @@ async def start_lavalink_server(loop):
     if not java_available:
         raise RuntimeError("You must install Java 1.8+ for Lavalink to run.")
 
-    extra_flags = ""
     if java_version == (1, 8):
         extra_flags = "-Dsun.zip.disableMemoryMapping=true"
+    elif java_version >= (11, 0):
+        extra_flags = "-Djdk.tls.client.protocols=TLSv1.2"
+    else:
+        extra_flags = ""
 
     from . import LAVALINK_DOWNLOAD_DIR, LAVALINK_JAR_FILE
 
     start_cmd = "java {} -jar {}".format(extra_flags, LAVALINK_JAR_FILE.resolve())
 
     global proc
+
+    if proc and proc.poll() is None:
+        return  # already running
+
     proc = Popen(
         shlex.split(start_cmd, posix=os.name == "posix"),
         cwd=str(LAVALINK_DOWNLOAD_DIR),
@@ -118,10 +129,38 @@ async def start_lavalink_server(loop):
 
 
 def shutdown_lavalink_server():
-    log.info("Shutting down lavalink server.")
     SHUTDOWN.set()
     global proc
     if proc is not None:
+        log.info("Shutting down lavalink server.")
         proc.terminate()
         proc.wait()
         proc = None
+
+
+async def download_lavalink(session):
+    from . import LAVALINK_DOWNLOAD_URL, LAVALINK_JAR_FILE
+
+    with LAVALINK_JAR_FILE.open(mode="wb") as f:
+        async with session.get(LAVALINK_DOWNLOAD_URL) as resp:
+            while True:
+                chunk = await resp.content.read(512)
+                if not chunk:
+                    break
+                f.write(chunk)
+
+
+async def maybe_download_lavalink(loop, cog):
+    from . import LAVALINK_DOWNLOAD_DIR, LAVALINK_JAR_FILE, BUNDLED_APP_YML_FILE, APP_YML_FILE
+
+    jar_exists = LAVALINK_JAR_FILE.exists()
+    current_build = redbot.core.VersionInfo.from_json(await cog.config.current_version())
+
+    if not jar_exists or current_build < redbot.core.version_info:
+        log.info("Downloading Lavalink.jar")
+        LAVALINK_DOWNLOAD_DIR.mkdir(parents=True, exist_ok=True)
+        async with ClientSession(loop=loop) as session:
+            await download_lavalink(session)
+        await cog.config.current_version.set(redbot.core.version_info.to_json())
+
+    shutil.copyfile(str(BUNDLED_APP_YML_FILE), str(APP_YML_FILE))

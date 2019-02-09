@@ -13,7 +13,7 @@ from redbot.core.i18n import Translator, cog_i18n
 from redbot.core.utils.chat_formatting import box
 from redbot.core.utils.menus import menu, DEFAULT_CONTROLS
 
-from redbot.core.bot import Red 
+from redbot.core.bot import Red
 
 T_ = Translator("Economy", __file__)
 
@@ -391,7 +391,7 @@ class Economy(commands.Cog):
     @guild_only_check()
     async def payouts(self, ctx: commands.Context):
         """Show the payouts for the slot machine."""
-        await ctx.author.send(SLOT_PAYOUTS_MSG())
+        await ctx.author.send(SLOT_PAYOUTS_MSG)
 
     @commands.command()
     @guild_only_check()
