@@ -159,91 +159,120 @@ async def get_command_for_dropping_points(ctx: commands.Context):
 
     return command
 
-async def EmbedPaginateWarnsList(self, ctx, items : list, items_per_page : int = 15, title=discord.Embed.Empty, desc=discord.Embed.Empty, author=discord.Embed.Empty, author_url=discord.Embed.Empty, author_icon_url=discord.Embed.Empty, thumbnail=discord.Embed.Empty):       
-        maxPage = len(items) // items_per_page + (len(items) % items_per_page > 0)
-        pages = [items[i * items_per_page:(i + 1) * items_per_page] for i in range(maxPage)]
-        count = 0
-        for page in pages:
+
+async def EmbedPaginateWarnsList(
+    self,
+    ctx,
+    items: list,
+    items_per_page: int = 15,
+    title=discord.Embed.Empty,
+    desc=discord.Embed.Empty,
+    author=discord.Embed.Empty,
+    author_url=discord.Embed.Empty,
+    author_icon_url=discord.Embed.Empty,
+    thumbnail=discord.Embed.Empty,
+):
+    maxPage = len(items) // items_per_page + (len(items) % items_per_page > 0)
+    pages = [items[i * items_per_page : (i + 1) * items_per_page] for i in range(maxPage)]
+    count = 0
+    for page in pages:
+        count += 1
+        # print(f"Page {count} : {page}")
+
+    async def showPage(page):
+        em = discord.Embed(title=title, description=desc, color=0x3DF270)
+        em.set_author(name=author, url=author_url, icon_url=author_icon_url)
+        em.set_thumbnail(url=thumbnail)
+        count = (page - 1) * items_per_page
+        total = len(items)
+        for warning in pages[page - 1]:
             count += 1
-            #print(f"Page {count} : {page}")
-
-        async def showPage(page):
-            em = discord.Embed(title=title, description=desc, color=0x3DF270)
-            em.set_author(name=author, url=author_url, icon_url=author_icon_url)
-            em.set_thumbnail(url=thumbnail)
-            count = (page - 1) * items_per_page
-            total = len(items)
-            for warning in pages[page-1]:
-                count += 1
-                num_points = warning["points"]
-                time = datetime.datetime.fromtimestamp(warning['time']).strftime('%m/%d/%y @ %I:%M %p UTC')
-                mod = ctx.guild.get_member(warning["mod"])
+            num_points = warning["points"]
+            time = datetime.datetime.fromtimestamp(warning["time"]).strftime(
+                "%m/%d/%y @ %I:%M %p UTC"
+            )
+            mod = ctx.guild.get_member(warning["mod"])
+            if mod is None:
+                mod = discord.utils.get(self.bot.get_all_members(), id=warning["mod"])
                 if mod is None:
-                    mod = discord.utils.get(
-                        self.bot.get_all_members(), id = warning["mod"]
-                    )
-                    if mod is None:
-                        mod = await self.bot.get_user_info(warning["mod"])
-                em.add_field(name=f'{count} of {total} | {num_points} point warning', value=f'Issued by {mod.mention}', inline=False)
-                em.add_field(name=f'Issued on {time}', value=f'Reason : {warning["description"]}\n------------------------------------------------------------------------------', inline=False)
-            em.set_footer(text=f'Page {currentPage} out of {maxPage}', icon_url="https://www.clipartmax.com/png/middle/171-1715896_paper-book-icon-textbook-icon.png")
-            return em
+                    mod = await self.bot.get_user_info(warning["mod"])
+            em.add_field(
+                name=f"{count} of {total} | {num_points} point warning",
+                value=f"Issued by {mod.mention}",
+                inline=False,
+            )
+            em.add_field(
+                name=f"Issued on {time}",
+                value=f'Reason : {warning["description"]}\n------------------------------------------------------------------------------',
+                inline=False,
+            )
+        em.set_footer(
+            text=f"Page {currentPage} out of {maxPage}",
+            icon_url="https://www.clipartmax.com/png/middle/171-1715896_paper-book-icon-textbook-icon.png",
+        )
+        return em
 
+    firstRun = True
+    while True:
+        if firstRun:
+            firstRun = False
+            currentPage = 1
+            em = await showPage(currentPage)
+            msg = await ctx.send(embed=em)
 
+        if maxPage == 1 and currentPage == 1:
+            toReact = ["✅"]
+        elif currentPage == 1:
+            toReact = ["⏩", "✅"]
+        elif currentPage == maxPage:
+            toReact = ["⏪", "✅"]
+        elif currentPage > 1 and currentPage < maxPage:
+            toReact = ["⏪", "⏩", "✅"]
 
-        firstRun = True
-        while True:
-            if firstRun:
-                firstRun = False
-                currentPage = 1
-                em = await showPage(currentPage)
-                msg = await ctx.send(embed=em)
+        for reaction in toReact:
+            await msg.add_reaction(reaction)
 
-            if maxPage == 1 and currentPage == 1:
-                toReact = ['✅']
-            elif currentPage == 1:
-                toReact = ['⏩','✅']
-            elif currentPage == maxPage:
-                toReact = ['⏪', '✅']
-            elif currentPage > 1 and currentPage < maxPage:
-                toReact = ['⏪', '⏩', '✅']
+        def checkReaction(reaction, user):
+            return user == ctx.message.author and str(reaction.emoji).startswith(
+                ("⏪", "⏩", "✅")
+            )  # and reaction.message == msg
 
-            for reaction in toReact:
-                await msg.add_reaction(reaction)
-
-            def checkReaction(reaction, user):
-                return user == ctx.message.author and str(reaction.emoji).startswith(('⏪', '⏩', '✅'))# and reaction.message == msg
+        try:
+            result, user = await self.bot.wait_for(
+                "reaction_add", timeout=120, check=checkReaction
+            )
+        except asyncio.TimeoutError:
+            em.set_footer(
+                text=f"Page {currentPage} out of {maxPage}. Timeout. Please reinvoke the command to change pages.",
+                icon_url="https://www.clipartmax.com/png/middle/171-1715896_paper-book-icon-textbook-icon.png",
+            )
+            await msg.edit(embed=em)
             try:
-                result, user = await self.bot.wait_for('reaction_add', timeout=120, check=checkReaction)
-            except asyncio.TimeoutError:
-                em.set_footer(text=f'Page {currentPage} out of {maxPage}. Timeout. Please reinvoke the command to change pages.', icon_url="https://www.clipartmax.com/png/middle/171-1715896_paper-book-icon-textbook-icon.png")
+                await msg.clear_reactions()
+            except discord.Forbidden:
+                pass
+            break
+        else:
+            if "⏪" in str(result.emoji):
+                # print('Previous Page')
+                currentPage -= 1
+                em = await showPage(currentPage)
                 await msg.edit(embed=em)
+                await msg.clear_reactions()
+            elif "⏩" in str(result.emoji):
+                # print('Next Page')
+                currentPage += 1
+                em = await showPage(currentPage)
                 try:
+                    await msg.edit(embed=em)
                     await msg.clear_reactions()
                 except discord.Forbidden:
                     pass
+            elif "✅" in str(result.emoji):
+                # print('Close List')
+                await msg.delete()
+                try:
+                    await ctx.message.delete()
+                except discord.Forbidden:
+                    pass
                 break
-            else:
-                if '⏪' in str(result.emoji):
-                    #print('Previous Page')
-                    currentPage -= 1
-                    em = await showPage(currentPage)
-                    await msg.edit(embed=em)
-                    await msg.clear_reactions()
-                elif '⏩' in str(result.emoji):
-                    #print('Next Page')
-                    currentPage += 1
-                    em = await showPage(currentPage)
-                    try:
-                        await msg.edit(embed=em)
-                        await msg.clear_reactions()
-                    except discord.Forbidden:
-                        pass
-                elif '✅' in str(result.emoji):
-                    #print('Close List')
-                    await msg.delete()
-                    try:
-                        await ctx.message.delete()
-                    except discord.Forbidden:
-                        pass
-                    break

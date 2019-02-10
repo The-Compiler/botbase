@@ -35,6 +35,8 @@ class SMReel(Enum):
     fps = "<:457:423520068136337428>"
     oof = "<:Oof:492894982785597461>"
     lgb = "<:lurkguardblob:500005020780068864>"
+
+
 _ = lambda s: s
 PAYOUTS = {
     (SMReel.seven, SMReel.seven, SMReel.seven): {
@@ -57,10 +59,7 @@ PAYOUTS = {
         "payout": lambda x: x * 3 + x,
         "phrase": _("Double derg! Your bid has been multiplied * 3!"),
     },
-    "3 symbols": {
-	    "payout": lambda x: x + 500,
-        "phrase": _("Three symbols! +500!"),
-    },
+    "3 symbols": {"payout": lambda x: x + 500, "phrase": _("Three symbols! +500!")},
     "2 symbols": {
         "payout": lambda x: x * 2 + x,
         "phrase": _("Two consecutive symbols! Your bid has been multiplied * 2!"),

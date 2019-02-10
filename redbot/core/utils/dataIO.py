@@ -3,11 +3,12 @@ import os
 import logging
 from random import randint
 
+
 class InvalidFileIO(Exception):
     pass
 
-class DataIO():
 
+class DataIO:
     def save_json(self, filename, data):
         rnd = randint(1000, 9999)
         path, ext = os.path.splitext(filename)
@@ -16,10 +17,12 @@ class DataIO():
         try:
             self._read_json(tmp_file)
         except json.decoder.JSONDecodeError:
-            self.logger.exception("Attempted to write file {} but JSON "
-                                  "integrity check on tmp file has failed. "
-                                  "The original file is unaltered."
-                                  "".format(filename))
+            self.logger.exception(
+                "Attempted to write file {} but JSON "
+                "integrity check on tmp file has failed. "
+                "The original file is unaltered."
+                "".format(filename)
+            )
             return False
         os.replace(tmp_file, filename)
         return True
@@ -37,14 +40,13 @@ class DataIO():
             return False
 
     def _read_json(self, filename):
-        with open(filename, encoding='utf-8', mode="r") as f:
+        with open(filename, encoding="utf-8", mode="r") as f:
             data = json.load(f)
         return data
 
     def _save_json(self, filename, data):
-        with open(filename, encoding='utf-8', mode="w") as f:
-            json.dump(data, f, indent=4,sort_keys=True,
-                separators=(',',' : '))
+        with open(filename, encoding="utf-8", mode="w") as f:
+            json.dump(data, f, indent=4, sort_keys=True, separators=(",", " : "))
         return data
 
     def _legacy_fileio(self, filename, IO, data=None):
@@ -55,13 +57,14 @@ class DataIO():
         elif IO == "check" and data == None:
             return self.is_valid_json(filename)
         else:
-            raise InvalidFileIO("FileIO was called with invalid"
-                " parameters")
+            raise InvalidFileIO("FileIO was called with invalid" " parameters")
+
 
 def get_value(filename, key):
-    with open(filename, encoding='utf-8', mode="r") as f:
+    with open(filename, encoding="utf-8", mode="r") as f:
         data = json.load(f)
     return data[key]
+
 
 def set_value(filename, key, value):
     data = fileIO(filename, "load")
@@ -69,5 +72,6 @@ def set_value(filename, key, value):
     fileIO(filename, "save", data)
     return True
 
+
 dataIO = DataIO()
-fileIO = dataIO._legacy_fileio # backwards compatibility
+fileIO = dataIO._legacy_fileio  # backwards compatibility

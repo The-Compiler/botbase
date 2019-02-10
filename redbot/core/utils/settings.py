@@ -9,7 +9,6 @@ default_path = "data/red/settings.json"
 
 
 class Settings:
-
     def __init__(self, path=default_path, parse_args=True):
         self.path = path
         self.check_folders()
@@ -19,10 +18,8 @@ class Settings:
             "PASSWORD": None,
             "OWNER": None,
             "PREFIXES": [],
-            "default": {"ADMIN_ROLE": "Transistor",
-                        "MOD_ROLE": "Process",
-                        "PREFIXES": []}
-                        }
+            "default": {"ADMIN_ROLE": "Transistor", "MOD_ROLE": "Process", "PREFIXES": []},
+        }
         self._memory_only = False
 
         if not dataIO.is_valid_json(self.path):
@@ -34,8 +31,7 @@ class Settings:
                 for key in self.default_settings.keys():
                     if key not in current.keys():
                         current[key] = self.default_settings[key]
-                        print("Adding " + str(key) +
-                              " field to red settings.json")
+                        print("Adding " + str(key) + " field to red settings.json")
                 dataIO.save_json(self.path, current)
             self.bot_settings = dataIO.load_json(self.path)
 
@@ -49,44 +45,54 @@ class Settings:
 
     def parse_cmd_arguments(self):
         parser = argparse.ArgumentParser(description="Red - Discord Bot")
-        parser.add_argument("--owner", help="ID of the owner. Only who hosts "
-                                            "Red should be owner, this has "
-                                            "security implications")
-        parser.add_argument("--co-owner", action="append", default=[],
-                            help="ID of a co-owner. Only people who have "
-                                 "access to the system that is hosting Red "
-                                 "should be  co-owners, as this gives them "
-                                 "complete access to the system's data. "
-                                 "This has serious security implications if "
-                                 "misused. Can be multiple.")
-        parser.add_argument("--prefix", "-p", action="append",
-                            help="Global prefix. Can be multiple")
-        parser.add_argument("--admin-role", help="Role seen as admin role by "
-                                                 "Red")
+        parser.add_argument(
+            "--owner",
+            help="ID of the owner. Only who hosts "
+            "Red should be owner, this has "
+            "security implications",
+        )
+        parser.add_argument(
+            "--co-owner",
+            action="append",
+            default=[],
+            help="ID of a co-owner. Only people who have "
+            "access to the system that is hosting Red "
+            "should be  co-owners, as this gives them "
+            "complete access to the system's data. "
+            "This has serious security implications if "
+            "misused. Can be multiple.",
+        )
+        parser.add_argument(
+            "--prefix", "-p", action="append", help="Global prefix. Can be multiple"
+        )
+        parser.add_argument("--admin-role", help="Role seen as admin role by " "Red")
         parser.add_argument("--mod-role", help="Role seen as mod role by Red")
-        parser.add_argument("--no-prompt",
-                            action="store_true",
-                            help="Disables console inputs. Features requiring "
-                                 "console interaction could be disabled as a "
-                                 "result")
-        parser.add_argument("--no-cogs",
-                            action="store_true",
-                            help="Starts Red with no cogs loaded, only core")
-        parser.add_argument("--self-bot",
-                            action='store_true',
-                            help="Specifies if Red should log in as selfbot")
-        parser.add_argument("--memory-only",
-                            action="store_true",
-                            help="Arguments passed and future edits to the "
-                                 "settings will not be saved to disk")
-        parser.add_argument("--dry-run",
-                            action="store_true",
-                            help="Makes Red quit with code 0 just before the "
-                                 "login. This is useful for testing the boot "
-                                 "process.")
-        parser.add_argument("--debug",
-                            action="store_true",
-                            help="Enables debug mode")
+        parser.add_argument(
+            "--no-prompt",
+            action="store_true",
+            help="Disables console inputs. Features requiring "
+            "console interaction could be disabled as a "
+            "result",
+        )
+        parser.add_argument(
+            "--no-cogs", action="store_true", help="Starts Red with no cogs loaded, only core"
+        )
+        parser.add_argument(
+            "--self-bot", action="store_true", help="Specifies if Red should log in as selfbot"
+        )
+        parser.add_argument(
+            "--memory-only",
+            action="store_true",
+            help="Arguments passed and future edits to the " "settings will not be saved to disk",
+        )
+        parser.add_argument(
+            "--dry-run",
+            action="store_true",
+            help="Makes Red quit with code 0 just before the "
+            "login. This is useful for testing the boot "
+            "process.",
+        )
+        parser.add_argument("--debug", action="store_true", help="Enables debug mode")
 
         args = parser.parse_args()
 
@@ -126,10 +132,7 @@ class Settings:
         admin = self.bot_settings["ADMIN_ROLE"]
         del self.bot_settings["MOD_ROLE"]
         del self.bot_settings["ADMIN_ROLE"]
-        self.bot_settings["default"] = {"MOD_ROLE": mod,
-                                        "ADMIN_ROLE": admin,
-                                        "PREFIXES": []
-                                        }
+        self.bot_settings["default"] = {"MOD_ROLE": mod, "ADMIN_ROLE": admin, "PREFIXES": []}
         self.save_settings()
 
     def update_old_settings_v2(self):
@@ -228,8 +231,7 @@ class Settings:
     @property
     def servers(self):
         ret = {}
-        server_ids = list(
-            filter(lambda x: str(x).isdigit(), self.bot_settings))
+        server_ids = list(filter(lambda x: str(x).isdigit(), self.bot_settings))
         for server in server_ids:
             ret.update({server: self.bot_settings[server]})
         return ret
@@ -238,8 +240,7 @@ class Settings:
         if server is None:
             return self.bot_settings["default"].copy()
         assert isinstance(server, discord.Server)
-        return self.bot_settings.get(server.id,
-                                     self.bot_settings["default"]).copy()
+        return self.bot_settings.get(server.id, self.bot_settings["default"]).copy()
 
     def get_server_admin(self, server):
         if server is None:

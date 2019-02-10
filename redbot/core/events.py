@@ -138,11 +138,7 @@ def init_events(bot, cli_flags):
             else:
                 reqs_installed[key] = True
 
-        options = (
-            ("MongoDB", mongo_enabled),
-            ("Voice", True),
-            ("Tests", reqs_installed["test"]),
-        )
+        options = (("MongoDB", mongo_enabled), ("Voice", True), ("Tests", reqs_installed["test"]))
 
         on_symbol, off_symbol, ascii_border = _get_startup_screen_specs()
 
