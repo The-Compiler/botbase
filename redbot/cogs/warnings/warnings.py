@@ -38,6 +38,7 @@ class Warnings(commands.Cog):
         "vip_warn_amount": 50,
         "vip_ignore_roles": [],
         "vip_ignore_users": [],
+        "loggingChannel": None,
     }
     default_member = {"total_points": 0, "status": "", "warnings": []}
 
@@ -183,6 +184,27 @@ class Warnings(commands.Cog):
         """Reset all Warning Data. Clears all saved warns, reasons, actions, and settings. Cannot be undone."""
         await self.config.clear_all()
         await ctx.send("Warnings Data Cleared. Change is permanent.")
+
+    @warningset.command(name="setloggingchannel", aliases=["setchannel", "log"])
+    @commands.guild_only()
+    @commands.has_permissions(manage_channels=True)
+    async def setloggingchannel(self, ctx, channel: discord.TextChannel):
+        """Set the Warning Logging Channel in Config"""
+        prevloggingChannel = await self.config.guild(ctx.guild).loggingChannel()
+        if prevloggingChannel is not None and prevloggingChannel == channel.id:
+            await ctx.send(f"Warnings Logging Channel is already set to {channel.mention}.")
+            return
+
+        prevloggingChannel = self.bot.get_channel(prevloggingChannel)
+        await self.config.guild(ctx.guild).loggingChannel.set(channel.id)
+        loggingChannel = await self.config.guild(ctx.guild).loggingChannel()
+        loggingChannel = self.bot.get_channel(loggingChannel)
+        if prevloggingChannel is not None:
+            await ctx.send(
+                f"Warnings Logging Channel updated from {prevloggingChannel.mention} to {loggingChannel.mention}."
+            )
+        else:
+            await ctx.send(f"Warnings Logging Channelto {loggingChannel.mention}.")
 
     @warningset.command()
     @commands.guild_only()
@@ -440,12 +462,11 @@ class Warnings(commands.Cog):
             "mod": ctx.author.id,
             "time": datetime.datetime.utcnow().timestamp(),
         }
-
         async with member_settings.warnings() as user_warnings:
             user_warnings.append(warning_to_add)
         current_point_count += reason_type["points"]
         await member_settings.total_points.set(current_point_count)
-
+        await self.logWarning(ctx, "warn", user, warning_to_add)
         await warning_points_add_check(self.config, ctx, user, current_point_count)
         try:
             em = discord.Embed(
@@ -572,7 +593,7 @@ class Warnings(commands.Cog):
                 else:
                     try:
                         warning = (
-                            user_warnings.pop(warn_num)
+                            user_warnings.pop(warn_num - 1)
                             if warn_num != None
                             else user_warnings.pop()
                         )
@@ -581,13 +602,14 @@ class Warnings(commands.Cog):
                             mod = self.bot.get_user_info(warning["mod"])
                         current_point_count -= warning["points"]
                         await member_settings.total_points.set(current_point_count)
+                        await self.logWarning(ctx, "unwarn", user, warning)
                     except IndexError:
                         await ctx.send(f"Failed to unwarn {user}")
                         return
             else:
                 return await ctx.send(_(f"__**{user.display_name}**__ has no warnings!"))
         await ctx.send(
-            "Removed Warning #{warn_num} | {points} point warning issued by {mod} for {description}".format(
+            "Removed Warning #{warn_num} | __{points} point warning__ issued by {mod} for {description}".format(
                 warn_num=(
                     warn_num if warn_num != None else len(user_warnings) + 1
                 ),  # Warning is already removed at this point, so add one to make up for one number off
@@ -596,6 +618,34 @@ class Warnings(commands.Cog):
                 description=warning["description"],
             )
         )
+
+    async def logWarning(self, ctx, action, user, warning):
+        logChannel = await self.config.guild(ctx.guild).loggingChannel()
+        logChannel = self.bot.get_channel(logChannel)
+        if logChannel is None:
+            print("loggingChannel not found")
+            return
+        member_settings = self.config.member(user)
+        total_points = await member_settings.total_points()
+        mod = discord.utils.get(self.bot.get_all_members(), id=warning["mod"])
+        time = datetime.datetime.fromtimestamp(warning["time"]).strftime("%m/%d/%y @ %I:%M %p UTC")
+        description = warning["description"]
+        if mod is None:
+            mod = self.bot.get_user_info(warning["mod"])
+        if action.lower() == "warn":
+            color = 0x3DF270
+            em = discord.Embed(title=f"Warned User | + Points {warning['points']}", color=color)
+        else:
+            color = discord.Color.red()
+            em = discord.Embed(title=f"Unwarned User | - Points {warning['points']}", color=color)
+        em.set_author(name=f"{user} | Total Points : {total_points}", icon_url=user.avatar_url)
+        em.add_field(name="Issued By", value=mod.mention)
+        em.add_field(name="Issued On", value=time)
+        em.add_field(name="Reason", value=description, inline=False)
+        try:
+            await logChannel.send(embed=em)
+        except discord.Forbidden:
+            pass
 
     @staticmethod
     async def custom_warning_reason(ctx: commands.Context):
