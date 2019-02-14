@@ -32,6 +32,7 @@ class Warnings(commands.Cog):
     default_guild = {
         "actions": [],
         "reasons": {},
+        "reasons_enabled": True,
         "allow_custom_reasons": False,
         "compact_list": False,
         "vips": [],
@@ -63,6 +64,22 @@ class Warnings(commands.Cog):
     async def warningset(self, ctx: commands.Context):
         """Manage settings for Warnings."""
         pass
+
+    @warningset.command(name="reasontoggle", aliases=["reasonstoggle", "rt"])
+    @commands.guild_only()
+    async def reasonstoggle(self, ctx: commands.Context, option: bool = None):
+        """Set use of registered reasons for warnings True / False. This will allow custom reason warns without the need of the custom argument in `!warn`"""
+        if option is None:
+            option = not await self.config.guild(ctx.guild).reasons_enabled()
+        await self.config.guild(ctx.guild).reasons_enabled.set(option)
+        if option:
+            await ctx.send(
+                "Registered Reasons enabled. Warnings must now use a registered reason from `!reasonlist`"
+            )
+        else:
+            await ctx.send(
+                "Registered Reasons disabled. All reasons will now default to 1 point each."
+            )
 
     @warningset.command()
     @commands.guild_only()
@@ -187,7 +204,6 @@ class Warnings(commands.Cog):
 
     @warningset.command(name="setloggingchannel", aliases=["setchannel", "log"])
     @commands.guild_only()
-    @commands.has_permissions(manage_channels=True)
     async def setloggingchannel(self, ctx, channel: discord.TextChannel):
         """Set the Warning Logging Channel in Config"""
         prevloggingChannel = await self.config.guild(ctx.guild).loggingChannel()
@@ -204,7 +220,7 @@ class Warnings(commands.Cog):
                 f"Warnings Logging Channel updated from {prevloggingChannel.mention} to {loggingChannel.mention}."
             )
         else:
-            await ctx.send(f"Warnings Logging Channelto {loggingChannel.mention}.")
+            await ctx.send(f"Warnings Logging Channel set to {loggingChannel.mention}.")
 
     @warningset.command()
     @commands.guild_only()
@@ -387,7 +403,7 @@ class Warnings(commands.Cog):
     @commands.command()
     @commands.guild_only()
     @checks.admin_or_permissions(ban_members=True)
-    async def warn(self, ctx: commands.Context, user: Union[discord.Member, str], reason: str):
+    async def warn(self, ctx: commands.Context, user: Union[discord.Member, str], *, reason: str):
         """Warn the user for the specified reason.
 
         `<reason>` must be a registered reason name, or *custom* if
@@ -419,9 +435,11 @@ class Warnings(commands.Cog):
                     "User not found in guild. Try mentioning them or using their UserID for an accurate search."
                 )
                 return
-
+        reasons_enabled = await self.config.guild(ctx.guild).reasons_enabled()
         custom_allowed = await self.config.guild(ctx.guild).allow_custom_reasons()
-        if reason.lower() == "custom":
+        if not reasons_enabled:
+            reason_type = {"points": 1, "description": reason}
+        elif reason.lower() == "custom":
             if not custom_allowed:
                 await ctx.send(
                     _(
@@ -466,7 +484,7 @@ class Warnings(commands.Cog):
             user_warnings.append(warning_to_add)
         current_point_count += reason_type["points"]
         await member_settings.total_points.set(current_point_count)
-        await self.logWarning(ctx, "warn", user, warning_to_add)
+        await self.logWarning(ctx.guild, "warn", user, warning_to_add)
         await warning_points_add_check(self.config, ctx, user, current_point_count)
         try:
             em = discord.Embed(
@@ -568,7 +586,10 @@ class Warnings(commands.Cog):
     @commands.guild_only()
     @checks.admin_or_permissions(ban_members=True)
     async def unwarn(
-        self, ctx: commands.Context, user: Union[discord.Member, str], warn_num: int = None
+        self,
+        ctx: commands.Context,
+        user: Union[discord.Member, str],
+        warn_num: Union[int, str] = None,
     ):
         """Remove a warning from a user. User must be in guild."""
         if user == ctx.author:
@@ -587,7 +608,27 @@ class Warnings(commands.Cog):
         await warning_points_remove_check(self.config, ctx, user, current_point_count)
         async with member_settings.warnings() as user_warnings:
             if user_warnings:
-                if warn_num is not None and warn_num > len(user_warnings):
+                if type(warn_num) == str:
+                    if warn_num.lower() in ["all", "every", "*"]:
+                        count = len(user_warnings)
+                        points = current_point_count
+                        warning = {
+                            "points": points,
+                            "description": "Cleared all warns",
+                            "mod": ctx.author.id,
+                            "time": datetime.datetime.utcnow().timestamp(),
+                        }
+                        await member_settings.warnings.set([])
+                        await member_settings.total_points.set(0)
+                        await self.logWarning(ctx.guild, "massunwarn", user, warning)
+                        await ctx.send(
+                            f"Removed **{count}** warnings worth **{points}** points from {user.display_name}."
+                        )
+                        return
+                    else:
+                        await ctx.send(f'Unable to parse "{warn_num}" as __**int**__.')
+                        return
+                elif warn_num is not None and warn_num > len(user_warnings):
                     await ctx.send(_("That warning doesn't exist!"))
                     return
                 else:
@@ -602,7 +643,7 @@ class Warnings(commands.Cog):
                             mod = self.bot.get_user_info(warning["mod"])
                         current_point_count -= warning["points"]
                         await member_settings.total_points.set(current_point_count)
-                        await self.logWarning(ctx, "unwarn", user, warning)
+                        await self.logWarning(ctx.guild, "unwarn", user, warning)
                     except IndexError:
                         await ctx.send(f"Failed to unwarn {user}")
                         return
@@ -619,29 +660,45 @@ class Warnings(commands.Cog):
             )
         )
 
-    async def logWarning(self, ctx, action, user, warning):
-        logChannel = await self.config.guild(ctx.guild).loggingChannel()
+    async def logWarning(self, guild, action, user, warning):
+        logChannel = await self.config.guild(guild).loggingChannel()
         logChannel = self.bot.get_channel(logChannel)
         if logChannel is None:
-            print("loggingChannel not found")
             return
         member_settings = self.config.member(user)
         total_points = await member_settings.total_points()
         mod = discord.utils.get(self.bot.get_all_members(), id=warning["mod"])
-        time = datetime.datetime.fromtimestamp(warning["time"]).strftime("%m/%d/%y @ %I:%M %p UTC")
+        time = datetime.datetime.fromtimestamp(warning["time"])
         description = warning["description"]
         if mod is None:
             mod = self.bot.get_user_info(warning["mod"])
-        if action.lower() == "warn":
-            color = 0x3DF270
-            em = discord.Embed(title=f"Warned User | + Points {warning['points']}", color=color)
+        if action.lower() == "massunwarn":  # Log Mass Unwarning
+            color = 0x820000
+            em = discord.Embed(
+                title=f"Unwarned User | - Points {warning['points']} | Total Points : {total_points}",
+                color=color,
+            )
+            em.set_author(name=f"{user} ( {user.id} )", icon_url=user.avatar_url)
+            em.add_field(name="Reason", value=description, inline=False)
+            em.set_footer(text=f"Issued By {mod.display_name}", icon_url=mod.avatar_url)
+            em.timestamp = time
         else:
-            color = discord.Color.red()
-            em = discord.Embed(title=f"Unwarned User | - Points {warning['points']}", color=color)
-        em.set_author(name=f"{user} | Total Points : {total_points}", icon_url=user.avatar_url)
-        em.add_field(name="Issued By", value=mod.mention)
-        em.add_field(name="Issued On", value=time)
-        em.add_field(name="Reason", value=description, inline=False)
+            if action.lower() == "warn":  # Logging Single Warn/Unwarn
+                color = 0x3DF270
+                em = discord.Embed(
+                    title=f"Warned User | + Points {warning['points']} | Total Points : {total_points}",
+                    color=color,
+                )
+            elif action.lower() == "unwarn":
+                color = discord.Color.red()
+                em = discord.Embed(
+                    title=f"Unwarned User | - Points {warning['points']} | Total Points : {total_points}",
+                    color=color,
+                )
+            em.set_author(name=f"{user} ( {user.id} )", icon_url=user.avatar_url)
+            em.add_field(name="Reason", value=description, inline=False)
+            em.set_footer(text=f"Issued By {mod.display_name}", icon_url=mod.avatar_url)
+            em.timestamp = time
         try:
             await logChannel.send(embed=em)
         except discord.Forbidden:
@@ -728,6 +785,7 @@ class Warnings(commands.Cog):
                                     "mod": message.guild.me.id,
                                     "time": datetime.datetime.utcnow().timestamp(),
                                 }
+                                await self.logWarning(message.guild, "warn", user, warning_to_add)
                                 async with member_settings.warnings() as user_warnings:
                                     user_warnings.append(warning_to_add)
                                 current_point_count += warning_to_add["points"]
