@@ -40,6 +40,8 @@ class Warnings(commands.Cog):
         "vip_ignore_roles": [],
         "vip_ignore_users": [],
         "loggingChannel": None,
+        "filtered_words": [],
+        "filter_warn_amount": 50,
     }
     default_member = {"total_points": 0, "status": "", "warnings": []}
 
@@ -749,6 +751,194 @@ class Warnings(commands.Cog):
             lambda m: m.name[: len(member)].lower() == member.lower(), guild.members
         )
 
+    @commands.group(aliases=["wf"])
+    @commands.guild_only()
+    @checks.admin_or_permissions(ban_members=True)
+    async def warnfilter(self, ctx: commands.Context):
+        """Manage filter settings for Warnings."""
+        pass
+
+    @warnfilter.command(name="add")
+    async def addFilter(self, ctx, *, words: str):
+        """Add words to the filter to auto warn for."""
+        added = []
+        failed = []
+        split_words = words.split()
+        tmp = ""
+        async with self.config.guild(ctx.guild).filtered_words() as filtered_words:
+            for word in split_words:
+                if word.lower() not in filtered_words:
+                    if not word.startswith('"') and not word.endswith('"') and not tmp:
+                        filtered_words.append(word)
+                        added.append(word)
+                    else:
+                        if word.startswith('"'):
+                            tmp += word[1:] + " "
+                        elif word.endswith('"'):
+                            tmp += word[:-1]
+                            if tmp.lower() not in filtered_words:
+                                filtered_words.append(tmp)
+                                added.append(tmp)
+                            else:
+                                failed.append(tmp)
+                            tmp = ""
+                        else:
+                            tmp += word + " "
+                else:
+                    failed.append(word)
+
+        response = "```diff\n" + "Added the following words to the filter list:" + "\n\n"
+        if added:
+            for word in added:
+                response += f"+ {word}" + "\n"
+        if failed:
+            response += "\n" + "-Failed to add the following words:" + "\n"
+            for word in failed:
+                response += f"- {word}" + "\n"
+        response += "```"
+        try:
+            if len(response) < 2000:
+                await ctx.send(response)
+            else:
+                await ctx.send(reponse[:1996] + "```")
+        except discord.Forbidden:
+            pass
+
+    @warnfilter.command(name="remove", alias=["delete", "del"])
+    async def removeFilter(self, ctx, *, words):
+        """Remove words from the filter"""
+        removed = []
+        failed = []
+        split_words = words.split()
+        tmp = ""
+        async with self.config.guild(ctx.guild).filtered_words() as filtered_words:
+            if len(split_words) == 1 and split_words[0] in ["all", "every", "*"]:
+                filtered_words = []
+                await ctx.send("Removed all warn filter words.")
+                return
+            for word in split_words:
+                if not word.startswith('"') and not word.endswith('"') and not tmp:
+                    if word.lower() in filtered_words:
+                        filtered_words.remove(word)
+                        removed.append(word)
+                    else:
+                        failed.append(tmp)
+                else:
+                    if word.startswith('"'):
+                        tmp += word[1:] + " "
+                    elif word.endswith('"'):
+                        tmp += word[:-1]
+                        if tmp.lower() in filtered_words:
+                            filtered_words.remove(tmp)
+                            removed.append(tmp)
+                        else:
+                            failed.append(tmp)
+                        tmp = ""
+                    else:
+                        tmp += word + " "
+
+        response = "```diff\n" + "Removed the following words from the filter list:" + "\n\n"
+        if removed:
+            for word in removed:
+                response += f"+ {word}" + "\n"
+        if failed:
+            response += "\n" + "- Failed to add the following words:" + "\n"
+            for word in failed:
+                response += f"- {word}" + "\n"
+        response += "```"
+        try:
+            if len(response) < 2000:
+                await ctx.send(response)
+            else:
+                await ctx.send(reponse[:1996] + "```")
+        except discord.Forbidden:
+            pass
+
+    @warnfilter.command(name="list")
+    async def listFilter(self, ctx):
+        """List current filtered words that will auto warn for."""
+        filtered_words = await self.config.guild(ctx.guild).filtered_words()
+        if filtered_words:
+            words = ", ".join(filtered_words)
+            words = "Filtered in this server:" + "\n\n" + words
+            try:
+                for page in pagify(words, delims=[" ", "\n"], shorten_by=8):
+                    await ctx.author.send(page)
+            except discord.Forbidden:
+                await ctx.send("I can't send direct messages to you.")
+
+    @warnfilter.command(name="points")
+    @checks.guildowner_or_permissions(administrator=True)
+    async def vipwarnpoints(self, ctx, amount: int = None):
+        """Configure the amount of warning points a user should be given for using a filtered word"""
+        guild = ctx.guild
+        warn_amount = await self.config.guild(guild).filter_warn_amount()
+        if amount is not None:
+            await self.config.guild(guild).filter_warn_amount.set(amount)
+            warn_amount = amount
+        await ctx.send(
+            f"Users will be given `{warn_amount} warning points` for using a filtered word."
+        )
+
+    async def checkFilter(self, message: discord.Message):
+        filtered_words = await self.config.guild(message.guild).filtered_words()
+        if filtered_words:
+            for word in filtered_words:
+                if word in message.content.lower():
+                    try:
+                        await message.delete()
+                    except discord.Forbidden:
+                        pass
+                    else:
+                        user = message.author
+                        member_settings = self.config.member(user)
+                        current_point_count = await member_settings.total_points()
+                        warn_amount = await self.config.guild(message.guild).filter_warn_amount()
+                        warning_to_add = {
+                            "points": warn_amount,
+                            "description": f"Using filtered word {word}",
+                            "mod": message.guild.me.id,
+                            "time": datetime.datetime.utcnow().timestamp(),
+                        }
+                        await self.logWarning(message.guild, "warn", user, warning_to_add)
+                        async with member_settings.warnings() as user_warnings:
+                            user_warnings.append(warning_to_add)
+                        current_point_count += warning_to_add["points"]
+                        await member_settings.total_points.set(current_point_count)
+                        ctx = await self.bot.get_context(message)
+                        if ctx.valid:
+                            await warning_points_add_check(
+                                self.config, ctx, user, current_point_count
+                            )
+                        try:
+                            em = discord.Embed(
+                                title=_("Warning from {user}").format(user=message.guild.me),
+                                description=warning_to_add["description"],
+                            )
+                            em.add_field(name=_("Points"), value=str(warning_to_add["points"]))
+                            await user.send(
+                                _("You have received a warning in {guild_name}.").format(
+                                    guild_name=message.guild.name
+                                ),
+                                embed=em,
+                            )
+                        except discord.HTTPException:
+                            # await ctx.send("Failed to send user warning notification.")
+                            pass
+                        except discord.Forbidden:
+                            pass
+                        try:
+                            await message.channel.send(
+                                _(
+                                    f"User __**{user}**__ has been warned for using a filtered word."
+                                )
+                            )
+                        except discord.Forbidden:
+                            pass
+
+    async def on_message_edit(self, before, after):
+        await self.on_message(after)
+
     async def on_message(self, message):
         def HasIgnoredRole(member):
             for role in member.roles:
@@ -758,6 +948,9 @@ class Warnings(commands.Cog):
 
         if message.guild:  # Guild only
             if not message.author.bot:  # Ignores messages from bots
+
+                await self.checkFilter(message)
+
                 if not message.content.startswith(
                     ("!", ";;", "t@", "t!", "!!", "-")
                 ):  # Ignore messages that start with common bot prefixes
