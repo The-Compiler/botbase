@@ -1,0 +1,3 @@
+[submodule "redbot/cogs"]
+	path = redbot/cogs
+	url = https://github.com/BotEX-Developers/079COGS
