@@ -9,6 +9,7 @@ import os
 import sys
 import tarfile
 import traceback
+import types
 from collections import namedtuple
 from pathlib import Path
 from random import SystemRandom
@@ -32,7 +33,7 @@ from .utils.predicates import MessagePredicate
 from .utils.chat_formatting import pagify, box, inline
 
 if TYPE_CHECKING:
-    from redbot.core.bot import Red
+    from .bot import Red
 
 __all__ = ["Core"]
 
@@ -51,7 +52,7 @@ _ = i18n.Translator("Core", __file__)
 
 class CoreLogic:
     def __init__(self, bot: "Red"):
-        self.bot = bot
+        self.bot: "Red" = bot
         self.bot.register_rpc_handler(self._load)
         self.bot.register_rpc_handler(self._unload)
         self.bot.register_rpc_handler(self._reload)
@@ -74,23 +75,21 @@ class CoreLogic:
         tuple
             4-tuple of loaded, failed, not found and already loaded cogs.
         """
-        failed_packages = []
-        loaded_packages = []
-        notfound_packages = []
-        alreadyloaded_packages = []
-        failed_with_reason_packages = []
+        failed_packages: List[str] = []
+        loaded_packages: List[str] = []
+        notfound_packages: List[str] = []
+        alreadyloaded_packages: List[str] = []
+        failed_with_reason_packages: List[Tuple[str, str]] = []
 
         bot = self.bot
 
-        cogspecs = []
+        cog_modules: List[Tuple[str, types.ModuleType]] = []
 
         for name in cog_names:
             try:
-                spec = await bot.cog_mgr.find_cog(name)
-                if spec:
-                    cogspecs.append((spec, name))
-                else:
-                    notfound_packages.append(name)
+                module = await bot.cog_mgr.load_cog_module(name)
+            except errors.NoSuchCog:
+                notfound_packages.append(name)
             except Exception as e:
                 log.exception("Package import failed", exc_info=e)
 
@@ -98,11 +97,13 @@ class CoreLogic:
                 exception_log += "".join(traceback.format_exception(type(e), e, e.__traceback__))
                 bot._last_exception = exception_log
                 failed_packages.append(name)
+            else:
+                cog_modules.append((name, module))
 
-        for spec, name in cogspecs:
+        for name, module in cog_modules:
             try:
-                self._cleanup_and_refresh_modules(spec.name)
-                await bot.load_extension(spec)
+                module = await bot.cog_mgr.reload(module)
+                await bot.load_extension(module)
             except errors.PackageAlreadyLoaded:
                 alreadyloaded_packages.append(name)
             except errors.CogLoadError as e:
@@ -125,28 +126,6 @@ class CoreLogic:
             alreadyloaded_packages,
             failed_with_reason_packages,
         )
-
-    @staticmethod
-    def _cleanup_and_refresh_modules(module_name: str) -> None:
-        """Interally reloads modules so that changes are detected"""
-        splitted = module_name.split(".")
-
-        def maybe_reload(new_name):
-            try:
-                lib = sys.modules[new_name]
-            except KeyError:
-                pass
-            else:
-                importlib._bootstrap._exec(lib.__spec__, lib)
-
-        # noinspection PyTypeChecker
-        modules = itertools.accumulate(splitted, "{}.{}".format)
-        for m in modules:
-            maybe_reload(m)
-
-        children = {name: lib for name, lib in sys.modules.items() if name.startswith(module_name)}
-        for child_name, lib in children.items():
-            importlib._bootstrap._exec(lib.__spec__, lib)
 
     @staticmethod
     def _get_package_strings(
@@ -199,12 +178,7 @@ class CoreLogic:
         self, cog_names: Sequence[str]
     ) -> Tuple[List[str], List[str], List[str], List[str], List[Tuple[str, str]]]:
         await self._unload(cog_names)
-
-        loaded, load_failed, not_found, already_loaded, load_failed_with_reason = await self._load(
-            cog_names
-        )
-
-        return loaded, load_failed, not_found, already_loaded, load_failed_with_reason
+        return await self._load(cog_names)
 
     async def _name(self, name: Optional[str] = None) -> str:
         """
@@ -1058,6 +1032,25 @@ class Core(commands.Cog, CoreLogic):
         else:
             await ctx.bot.send(_("Characters must be fewer than 1024."))
 
+    @_set.command()
+    @checks.is_owner()
+    async def api(self, ctx: commands.Context, service: str, *tokens: commands.converter.APIToken):
+        """Set various external API tokens.
+        
+        This setting will be asked for by some 3rd party cogs and some core cogs.
+
+        To add the keys provide the service name and the tokens as a comma separated
+        list of key,values as described by the cog requesting this command.
+
+        Note: API tokens are sensitive and should only be used in a private channel
+        or in DM with the bot.
+        """
+        if ctx.channel.permissions_for(ctx.me).manage_messages:
+            await ctx.message.delete()
+        entry = {k: v for t in tokens for k, v in t.items()}
+        await ctx.bot.db.api_tokens.set_raw(service, value=entry)
+        await ctx.send(_("`{service}` API tokens have been set.").format(service=service))
+
     @commands.group()
     @checks.is_owner()
     async def helpset(self, ctx: commands.Context):
@@ -1840,14 +1833,9 @@ class Core(commands.Cog, CoreLogic):
     # RPC handlers
     async def rpc_load(self, request):
         cog_name = request.params[0]
-
-        spec = await self.bot.cog_mgr.find_cog(cog_name)
-        if spec is None:
-            raise LookupError("No such cog found.")
-
-        self._cleanup_and_refresh_modules(spec.name)
-
-        await self.bot.load_extension(spec)
+        module = await self.bot.cog_mgr.load_cog_module(cog_name)
+        module = await self.bot.cog_mgr.reload(module)
+        await self.bot.load_extension(module)
 
     async def rpc_unload(self, request):
         cog_name = request.params[0]

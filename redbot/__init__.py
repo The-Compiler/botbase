@@ -119,9 +119,7 @@ class VersionInfo:
             "dev_release": self.dev_release,
         }
 
-    def __lt__(self, other: _Any) -> bool:
-        if not isinstance(other, VersionInfo):
-            return NotImplemented
+    def __lt__(self, other: "VersionInfo") -> bool:
         tups: _List[_Tuple[int, int, int, int, int, int, int]] = []
         for obj in (self, other):
             tups.append(
@@ -158,7 +156,7 @@ class VersionInfo:
         )
 
 
-__version__ = "3.1.3"
+__version__ = "3.2.0"
 version_info = VersionInfo.from_str(__version__)
 
 # Filter fuzzywuzzy slow sequence matcher warning
