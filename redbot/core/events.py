@@ -5,6 +5,7 @@ import datetime
 import logging
 import traceback
 import asyncio
+import time
 from datetime import timedelta
 from typing import List
 
@@ -17,10 +18,18 @@ from pkg_resources import DistributionNotFound
 from .. import __version__ as red_version, version_info as red_version_info, VersionInfo
 from . import commands
 from .data_manager import storage_type
-from .utils.chat_formatting import inline, bordered, format_perms_list, humanize_timedelta
+from .utils.chat_formatting import (
+    inline,
+    bordered,
+    format_perms_list,
+    humanize_timedelta,
+    pagify,
+    box,
+)
 from .utils import fuzzy_command_search, format_fuzzy_results
 
 log = logging.getLogger("red")
+
 init()
 
 INTRO = """
@@ -34,6 +43,32 @@ ______         _           ______ _                       _  ______       _
 
 
 def init_events(bot, cli_flags):
+    async def warning(msg, *args, **kwargs):
+        nw_log_channel = bot.get_channel(await bot.db.nw_logging_channel())
+        if nw_log_channel:
+            em = discord.Embed(title="Warning Log", description=msg)
+            try:
+                await nw_log_channel.send(embed=em)
+            except (discord.Forbidden, discord.HTTPException) as e:
+                print("[ERROR] Failed to log command invoke exception to discord log", e)
+        log.warning(msg, *args, **kwargs)
+
+    async def exception(msg, *args, exc_info=True, **kwargs):
+        nw_log_channel = bot.get_channel(await bot.db.nw_logging_channel())
+        if nw_log_channel:
+            em = discord.Embed(title="Exception Log", description=msg)
+            try:
+                await nw_log_channel.send(embed=em)
+                if exc_info:
+                    if isinstance(exc_info, BaseException):
+                        exc_info = (type(exc_info), exc_info, exc_info.__traceback__)
+                    elif not isinstance(exc_info, tuple):
+                        exc_info = sys.exc_info()
+                await nw_log_channel.send(pagify(exc_info))
+            except (discord.Forbidden, discord.HTTPException) as e:
+                print("[ERROR] Failed to log command invoke exception to discord log", e)
+        log.exception(msg, *args, exc_info, **kwargs)
+
     @bot.event
     async def on_connect():
         if bot.uptime is None:
@@ -68,7 +103,7 @@ def init_events(bot, cli_flags):
                 try:
                     await bot.load_extension(package)
                 except Exception as e:
-                    log.exception("Failed to load package {}".format(package), exc_info=e)
+                    await exception("Failed to load package {}".format(package), exc_info=e)
                     await bot.remove_loaded_package(package)
                     to_remove.append(package)
             for package in to_remove:
@@ -179,7 +214,7 @@ def init_events(bot, cli_flags):
             if disabled_message:
                 await ctx.send(disabled_message.replace("{command}", ctx.invoked_with))
         elif isinstance(error, commands.CommandInvokeError):
-            log.exception(
+            await exception(
                 "Exception in command '{}'".format(ctx.command.qualified_name),
                 exc_info=error.original,
             )
@@ -193,6 +228,27 @@ def init_events(bot, cli_flags):
             )
             bot._last_exception = exception_log
             await ctx.send(inline(message))
+
+            nw_log_channel = bot.get_channel(await bot.db.nw_logging_channel())
+            if nw_log_channel:
+                try:
+                    args = ctx.message.content[len(ctx.command.qualified_name) + 2 :]
+                    em = discord.Embed(title="CommandInvokeError Log")
+                    em.description = "[{time}] Invoked by `{author}` in guild {guild} | {channel}\n{jump}".format(
+                        time=time.strftime("%m/%d/%y %I:%M %p", time.gmtime(time.time())),
+                        author=ctx.author,
+                        guild=ctx.guild.name,
+                        channel=ctx.channel.mention,
+                        jump=f"[Jump to Invocation]({ctx.message.jump_url})",
+                    )
+                    if args.strip() != "":
+                        em.add_field(name="Arguments used", value=args)
+                    await nw_log_channel.send(embed=em)
+
+                    for page in pagify(exception_log, shorten_by=10):
+                        await nw_log_channel.send(box(page, lang="py"))
+                except (discord.Forbidden, discord.HTTPException) as e:
+                    print("[ERROR] Failed to log command invoke exception to discord log", e)
         elif isinstance(error, commands.CommandNotFound):
             fuzzy_commands = await fuzzy_command_search(ctx)
             if not fuzzy_commands:
@@ -235,7 +291,7 @@ def init_events(bot, cli_flags):
                 delete_after=error.retry_after,
             )
         else:
-            log.exception(type(error).__name__, exc_info=error)
+            await exception(type(error).__name__, exc_info=error)
 
     @bot.event
     async def on_message(message):
@@ -249,7 +305,7 @@ def init_events(bot, cli_flags):
             system_now = datetime.datetime.utcnow()
             diff = abs((discord_now - system_now).total_seconds())
             if diff > 60:
-                log.warning(
+                await warning(
                     "Detected significant difference (%d seconds) in system clock to discord's "
                     "clock. Any time sensitive code may fail.",
                     diff,

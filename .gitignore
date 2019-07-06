@@ -143,3 +143,4 @@ ENV/
 /tcl
 /redbot/079Cogs
 /get-pip.py
+/.gitmodules

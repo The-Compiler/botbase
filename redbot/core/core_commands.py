@@ -408,39 +408,12 @@ class Core(commands.Cog, CoreLogic):
                 _("Embeds are now {} for you.").format("enabled" if enabled else "disabled")
             )
 
-    def is_BotStaff_NW_Management_or_higher(self, ctx):
-        StaffServer = self.bot.get_guild(420530084294688775)
-        hasManagementOrHigher = False
-        hasBotStaff = False
-        if StaffServer is not None:
-            member = StaffServer.get_member(ctx.author.id)
-            if member is not None:
-                botStaffRole = discord.utils.get(StaffServer.roles, name="Bot Engineer")
-                if botStaffRole is not None:
-                    hasBotStaff = botStaffRole in member.roles
-                managementRole = discord.utils.get(StaffServer.roles, name="Management")
-                if managementRole is not None:
-                    hasManagementOrHigher = (
-                        StaffServer.roles.index(member.top_role) >= managementRole.position
-                    )
-            return hasManagementOrHigher or hasBotStaff
-        else:
-            return False
-
     @commands.command()
-    # @checks.is_owner()
+    @checks.bot_developer_or_owner()
     async def traceback(self, ctx: commands.Context, public: bool = False):
         """Sends to the owner the last command exception that has occurred
 
         If public (yes is specified), it will be sent to the chat instead"""
-        if not self.is_BotStaff_NW_Management_or_higher(ctx):
-            try:
-                await ctx.send(
-                    "You must be a part of Northwood Management or NW Bot Engineer to use this command."
-                )
-            except discord.Forbidden:
-                pass
-            return
         if not public:
             destination = ctx.author
         else:
@@ -1050,6 +1023,37 @@ class Core(commands.Cog, CoreLogic):
         entry = {k: v for t in tokens for k, v in t.items()}
         await ctx.bot.db.api_tokens.set_raw(service, value=entry)
         await ctx.send(_("`{service}` API tokens have been set.").format(service=service))
+
+    @_set.command(name="errorlog")
+    @checks.bot_developer_or_owner()
+    async def error_log(self, ctx: commands.Context, channel: discord.TextChannel):
+        """Sets the error logging channel for 079"""
+        nw_logging_channel = self.bot.get_channel(await self.bot.db.nw_logging_channel())
+        if nw_logging_channel and nw_logging_channel.id == channel.id:
+            return await ctx.send(
+                f"{channel.mention} is already set as the error logging channel."
+            )
+
+        bot_perms = channel.permissions_for(ctx.guild.me)
+        if not bot_perms.send_messages:
+            return await ctx.send(f"I do not have `Send Messages` permission in {channel.mention}")
+
+        await self.bot.db.nw_logging_channel.set(channel.id)
+        await ctx.send(f"{channel.mention} is now set as the error logging channel.")
+
+    @_set.command(name="nw")
+    @checks.bot_developer_or_owner()
+    async def nw_server_guild(self, ctx: commands.Context, guild: int):
+        """Sets the main Northwood server or 079"""
+        nw_server = self.bot.get_guild(await self.bot.db.nw_server_id())
+        if nw_server and nw_server.id == guild:
+            return await ctx.send(f"{nw_server.name} is already set as the Northwood guild.")
+
+        updated_nw_server = self.bot.get_guild(guild)
+        if updated_nw_server:
+            await self.bot.db.nw_logging_channel.set(updated_nw_server.id)
+            return await ctx.send(f"{updated_nw_server.name} is now set as the Northwood guild.")
+        await ctx.send(f"Guild not found for id {guild}")
 
     @commands.group()
     @checks.is_owner()

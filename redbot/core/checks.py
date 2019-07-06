@@ -39,7 +39,30 @@ __all__ = [
     "is_admin_or_superior",
     "bot_in_a_guild",
     "check_permissions",
+    "bot_developer_or_owner",
 ]
+
+
+def bot_developer_or_owner():
+    """Check if user is a Bot Engineer or Bot Owner"""
+
+    async def predicate(ctx):
+        author = ctx.author
+        bot = ctx.bot
+        nw_server = bot.get_guild(await bot.db.nw_server_id())
+
+        if await bot.is_owner(author):
+            return True
+
+        if nw_server:
+            member = nw_server.get_member(author.id)
+            if member:
+                bot_engineer_role = discord.utils.get(nw_server.roles, name="Bot Engineer")
+                if bot_engineer_role:
+                    return bot_engineer_role in member.roles
+        return False
+
+    return _check_decorator(predicate)
 
 
 def bot_in_a_guild():
