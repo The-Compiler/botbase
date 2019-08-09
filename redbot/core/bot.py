@@ -59,6 +59,8 @@ class RedBase(commands.GroupMixin, commands.bot.BotBase, RPCMixin):
             api_tokens={},
             nw_server_id=420530084294688775,
             nw_logging_channel=None,
+            error_log_warning=False,
+            error_log_exception=False,
         )
 
         self.db.register_guild(

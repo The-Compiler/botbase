@@ -1024,15 +1024,16 @@ class Core(commands.Cog, CoreLogic):
         await ctx.bot.db.api_tokens.set_raw(service, value=entry)
         await ctx.send(_("`{service}` API tokens have been set.").format(service=service))
 
-    @_set.command(name="errorlog")
+    @_set.group(name="errorlog", pass_context=True, invoke_without_command=True)
     @checks.bot_developer_or_owner()
     async def error_log(self, ctx: commands.Context, channel: discord.TextChannel):
-        """Sets the error logging channel for 079"""
-        nw_logging_channel = self.bot.get_channel(await self.bot.db.nw_logging_channel())
-        if nw_logging_channel and nw_logging_channel.id == channel.id:
-            return await ctx.send(
-                f"{channel.mention} is already set as the error logging channel."
-            )
+        """Sets the error logging channel for 079 and edit it's settings"""
+        if ctx.invoked_subcommand is None:
+            nw_logging_channel = self.bot.get_channel(await self.bot.db.nw_logging_channel())
+            if nw_logging_channel and nw_logging_channel.id == channel.id:
+                return await ctx.send(
+                    f"{channel.mention} is already set as the error logging channel."
+                )
 
         bot_perms = channel.permissions_for(ctx.guild.me)
         if not bot_perms.send_messages:
@@ -1040,6 +1041,32 @@ class Core(commands.Cog, CoreLogic):
 
         await self.bot.db.nw_logging_channel.set(channel.id)
         await ctx.send(f"{channel.mention} is now set as the error logging channel.")
+
+    @error_log.command(name="warning")
+    @checks.bot_developer_or_owner()
+    async def error_log_warning(self, ctx: commands.Context, option: bool = None):
+        """Enable/Disable discord logging of warning level logs"""
+        if option is None:
+            option = not await self.bot.db.error_log_warning()
+        await self.bot.db.error_log_warning.set(option)
+        await ctx.maybe_send_embed(
+            "{resp} log warning level logs.".format(
+                resp="Will now" if option else "Will no longer"
+            )
+        )
+
+    @error_log.command(name="exception")
+    @checks.bot_developer_or_owner()
+    async def error_log_exception(self, ctx: commands.Context, option: bool = None):
+        """Enable/Disable discord logging of exception level logs"""
+        if option is None:
+            option = not await self.bot.db.error_log_exception()
+        await self.bot.db.error_log_exception.set(option)
+        await ctx.maybe_send_embed(
+            "{resp} log exception level logs.".format(
+                resp="Will now" if option else "Will no longer"
+            )
+        )
 
     @_set.command(name="nw")
     @checks.bot_developer_or_owner()

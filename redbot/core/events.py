@@ -44,29 +44,39 @@ ______         _           ______ _                       _  ______       _
 
 def init_events(bot, cli_flags):
     async def warning(msg, *args, **kwargs):
-        nw_log_channel = bot.get_channel(await bot.db.nw_logging_channel())
-        if nw_log_channel:
-            em = discord.Embed(title="Warning Log", description=msg)
-            try:
-                await nw_log_channel.send(embed=em)
-            except (discord.Forbidden, discord.HTTPException) as e:
-                print("[ERROR] Failed to log command invoke exception to discord log", e)
+        if await bot.db.error_log_warning():
+            nw_log_channel = bot.get_channel(await bot.db.nw_logging_channel())
+            if nw_log_channel:
+                em = discord.Embed(title="Warning Log", description=msg)
+                try:
+                    await nw_log_channel.send(embed=em)
+                except (discord.Forbidden, discord.HTTPException) as e:
+                    print("[ERROR] Failed to log command invoke exception to discord log", e)
         log.warning(msg, *args, **kwargs)
 
-    async def exception(msg, *args, exc_info=True, **kwargs):
-        nw_log_channel = bot.get_channel(await bot.db.nw_logging_channel())
-        if nw_log_channel:
-            em = discord.Embed(title="Exception Log", description=msg)
-            try:
-                await nw_log_channel.send(embed=em)
-                if exc_info:
-                    if isinstance(exc_info, BaseException):
-                        exc_info = (type(exc_info), exc_info, exc_info.__traceback__)
-                    elif not isinstance(exc_info, tuple):
-                        exc_info = sys.exc_info()
-                await nw_log_channel.send(pagify(exc_info))
-            except (discord.Forbidden, discord.HTTPException) as e:
-                print("[ERROR] Failed to log command invoke exception to discord log", e)
+    async def exception(msg, *args, exc_info=True, discord_log=True, **kwargs):
+        if await bot.db.error_log_exception():
+            nw_log_channel = bot.get_channel(await bot.db.nw_logging_channel())
+            if nw_log_channel and discord_log:
+                em = discord.Embed(title="Exception Log", description=msg)
+                try:
+                    if exc_info:
+                        if isinstance(exc_info, BaseException):
+                            exc_info = (type(exc_info), exc_info, exc_info.__traceback__)
+                        elif not isinstance(exc_info, tuple):
+                            exc_info = sys.exc_info()
+                    await nw_log_channel.send(embed=em)
+                    for page in pagify(
+                        "".join(
+                            traceback.format_exception(
+                                type(exc_info), exc_info, exc_info.__traceback__
+                            )
+                        ),
+                        shorten_by=10,
+                    ):
+                        await nw_log_channel.send(box(page, lang="py"))
+                except Exception as e:
+                    print("[ERROR] Failed to log command invoke exception to discord log", e)
         log.exception(msg, *args, exc_info, **kwargs)
 
     @bot.event
@@ -217,6 +227,7 @@ def init_events(bot, cli_flags):
             await exception(
                 "Exception in command '{}'".format(ctx.command.qualified_name),
                 exc_info=error.original,
+                discord_log=False,
             )
 
             message = "Error in command '{}'. Check your console or logs for details.".format(
